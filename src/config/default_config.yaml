@@ -1,0 +1,10 @@
+system:
+  log_level: INFO
+  
+communication:
+  wi_sun_device: /dev/ttyUSB0
+  echonet_port: 3610
+
+simulation:
+  update_interval_sec: 1.0
+  scenario_file: data/default_scenario.csv

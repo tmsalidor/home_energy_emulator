@@ -1,0 +1,21 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    container_name: hems_emulator
+    restart: unless-stopped
+    ports:
+      - "8080:8080" # NiceGUI / Web Interface
+      - "3610:3610/udp" # ECHONET Lite UDP
+    environment:
+      - TZ=Asia/Tokyo
+      - WI_SUN_DEVICE=/dev/ttyUSB0
+    volumes:
+      - ./src:/app/src
+      - ./data:/app/data
+      - ./config:/app/config
+    # devices:
+    #   - /dev/ttyUSB0:/dev/ttyUSB0 # Uncomment when running on Pi with Dongle
+    tty: true
+    stdin_open: true

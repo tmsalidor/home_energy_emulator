@@ -1,0 +1,52 @@
+from pydantic import BaseModel, Field
+from enum import Enum
+from typing import Literal
+
+class DeviceType(str, Enum):
+    SMART_METER = "smart_meter"
+    SOLAR = "solar"
+    BATTERY = "battery"
+
+class BaseDevice(BaseModel):
+    device_id: str
+    device_type: DeviceType
+    is_running: bool = True
+
+class SmartMeter(BaseDevice):
+    device_type: Literal[DeviceType.SMART_METER] = DeviceType.SMART_METER
+    
+    # 瞬時電力計測値 (W)
+    # 正: 買電 (Grid -> Home), 負: 売電 (Home -> Grid)
+    instant_current_power: float = 0.0    
+    
+    # 積算電力量 (kWh)
+    cumulative_power_buy_kwh: float = 0.0
+    cumulative_power_sell_kwh: float = 0.0
+
+class Solar(BaseDevice):
+    device_type: Literal[DeviceType.SOLAR] = DeviceType.SOLAR
+    
+    # 瞬時発電電力 (W)
+    instant_generation_power: float = 0.0
+    
+    # 積算発電電力量 (kWh)
+    cumulative_generation_kwh: float = 0.0
+
+class Battery(BaseDevice):
+    device_type: Literal[DeviceType.BATTERY] = DeviceType.BATTERY
+    
+    # 運転モード (簡易エミュレーション用)
+    # ECHONET Liteでは詳細な設定があるが、ここではコアロジック用フラグとして管理
+    is_charging: bool = False
+    is_discharging: bool = False
+    
+    # 充放電電力 (W)
+    # 実際の制御では指示値と現在値があるが、ここでは実行値を保持
+    instant_charge_power: float = 0.0
+    instant_discharge_power: float = 0.0
+    
+    # 蓄電残量 (%)
+    soc: float = 50.0 
+    
+    # 定格容量 (Wh)
+    rated_capacity_wh: float = 10000.0 

@@ -1,0 +1,13 @@
+time,load_w,solar_w,notes
+00:00,300,0,Midnight Base
+06:00,400,0,Morning Rising
+07:00,1200,50,Breakfast/Activity
+08:00,600,400,Commute
+10:00,400,2000,Sunny Morning
+12:00,400,3500,Peak Solar
+15:00,400,2500,Afternoon
+17:00,800,500,Evening Start
+18:00,1500,0,Lighting/Dinner
+20:00,1200,0,Evening Relax
+22:00,600,0,Night Pre-sleep
+23:59,300,0,Midnight End
