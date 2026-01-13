@@ -1,6 +1,0 @@
-fastapi
-uvicorn[standard]
-nicegui
-pandas
-python-dotenv
-# ECHONET Liteライブラリが必要な場合は適宜追加（自作スタックを想定）
