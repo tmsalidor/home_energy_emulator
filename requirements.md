@@ -5,7 +5,7 @@ ECHONET Lite最新規格に準拠した、家庭内のエネルギーマネジ�
 2.1 実行環境
 * プラットフォーム: Raspberry Pi (OS: Raspberry Pi OS) および Ubuntu (開発用)
 * 移植性: Docker Compose を活用し、両環境で同一の動作を保証する。
-* デバイス管理: Wi-SUNドングルのパス（例: /dev/ttyUSB0）を環境変数から指定可能とする。
+* デバイス管理: Wi-SUNドングル(RL7023 Stick-D/IPS)のパス（例: /dev/ttyUSB0）を環境変数から指定可能とする。
 2.2 通信インターフェース
 * Wi-SUN (Bルート): 低圧スマートメーター (0x0288) 専用。PANA認証を実装する。
 * Wi-Fi (UDP/IP): 太陽光発電 (0x0279) および 蓄電池 (0x027D) 用。
