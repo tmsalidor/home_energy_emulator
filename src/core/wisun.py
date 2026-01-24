@@ -5,7 +5,7 @@ import serial_asyncio
 from src.config.settings import settings
 from src.core.echonet import echonet_ctrl
 
-logger = logging.getLogger("wisun")
+logger = logging.getLogger("uvicorn")
 
 class SerialInterface:
     def __init__(self, device_path: str, baudrate: int = 115200):
@@ -15,6 +15,7 @@ class SerialInterface:
         self.writer: Optional[asyncio.StreamWriter] = None
 
     async def connect(self):
+        logger.info(f"Attempting to connect to serial port: {self.device_path} Baud:{self.baudrate}")
         try:
             self.reader, self.writer = await serial_asyncio.open_serial_connection(
                 url=self.device_path, baudrate=self.baudrate
@@ -29,10 +30,13 @@ class SerialInterface:
         data = (line + "\r\n").encode('utf-8')
         self.writer.write(data)
         await self.writer.drain()
-        logger.debug(f"TX: {line}")
+        logger.info(f"TX: {line}")
 
     async def read_line_forever(self, callback: Callable[[str], None]):
-        if not self.reader: return
+        if not self.reader:
+             logger.error("Reader is None in read_line_forever")
+             return
+        logger.info("Starting serial read loop")
         while True:
             try:
                 line_bytes = await self.reader.readline()
@@ -40,7 +44,7 @@ class SerialInterface:
                     break
                 line = line_bytes.decode('utf-8').strip()
                 if line:
-                    logger.debug(f"RX: {line}")
+                    logger.info(f"RX: {line}")
                     callback(line)
             except Exception as e:
                 logger.error(f"Serial read error: {e}")
@@ -54,6 +58,7 @@ class WiSunManager:
         self._response_future: Optional[asyncio.Future] = None
         
     async def start(self):
+        logger.info("WiSunManager.start() called")
         try:
             await self.serial.connect()
             self.is_running = True
@@ -148,13 +153,20 @@ class WiSunManager:
             if len(parts) < 9: return
             
             sender_ip = parts[1]
-            # dest_ip = parts[2]
-            # rport = parts[3]
-            # lport = parts[4]
+            lport_hex = parts[4]
             # sender_lla = parts[5]
             # secured = parts[6]
             # datalen = int(parts[7], 16)
             data_hex = parts[8]
+
+            # Log all received UDP packets for debugging/verification
+            logger.info(f"RX UDP | Sender:{sender_ip} Port:{lport_hex} Data:{data_hex}")
+
+            # Filter Port: ECHONET Lite uses 3610 (0x0E1A)
+            # Some devices might trigger ERXUDP for PANA (0x02D3/723 or others)
+            if lport_hex.upper() != "0E1A":
+                logger.debug(f"Skipping non-ECHONET Lite packet (Port {lport_hex})")
+                return
             
             data_bytes = bytes.fromhex(data_hex)
             

@@ -87,7 +87,7 @@ class EchonetController:
         try:
             req = EchonetFrame(data)
         except ValueError as e:
-            logger.warning(f"Parse error: {e}")
+            logger.warning(f"Parse error: {e} | Data: {data.hex()}")
             return None
             
         target_key = req.deoj
