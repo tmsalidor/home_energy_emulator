@@ -15,7 +15,7 @@ services:
       - ./src:/app/src
       - ./data:/app/data
       - ./config:/app/config
-    # devices:
-    #   - /dev/ttyUSB0:/dev/ttyUSB0 # Uncomment when running on Pi with Dongle
+    devices:
+      - /dev/ttyUSB0:/dev/ttyUSB0 # Requires usbipd-win on Windows/WSL2 or native connection on Linux
     tty: true
     stdin_open: true
