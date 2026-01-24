@@ -92,10 +92,7 @@ class EchonetController:
             
         target_key = req.deoj
         
-        # 0. Node Profile Handling (Basic Stub)
-        if target_key == (0x0E, 0xF0, 0x01):
-            # Should handle Node Profile separately or register it as a normal object
-            pass
+
             
         handler = self._objects.get(target_key)
         if not handler:
@@ -155,5 +152,10 @@ class EchonetController:
         
         return res.to_bytes()
 
-# Global ECHONET Controller
-echonet_ctrl = EchonetController()
+# Global ECHONET Controllers
+# Separate controllers for Wi-Fi (Solar/Battery) and Wi-SUN (Smart Meter)
+wifi_echonet_ctrl = EchonetController()
+wisun_echonet_ctrl = EchonetController()
+
+# Alias for backward compatibility (points to Wi-Fi controller)
+echonet_ctrl = wifi_echonet_ctrl

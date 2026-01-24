@@ -15,6 +15,19 @@ class CommunicationSettings(BaseModel):
     b_route_password: str = "0123456789AB"
     wi_sun_channel: Optional[str] = None # Auto or specific channel
 
+class EchonetSettings(BaseModel):
+    # Common
+    maker_code: str = "000000" # 3 bytes hex
+    
+    # Identification Numbers
+    node_profile_id: str = "FE00000000000000000000000000000100" 
+    solar_id: str        = "FE00000000000000000000000000000200"
+    battery_id: str      = "FE00000000000000000000000000000300"
+    smart_meter_id: str  = "FE00000000000000000000000000000400"
+    
+    # Device Specific Defaults
+    battery_rated_capacity_wh: float = 10000.0
+
 class SimulationSettings(BaseModel):
     update_interval_sec: float = 1.0
     scenario_file: str = "data/default_scenario.csv"
@@ -22,6 +35,7 @@ class SimulationSettings(BaseModel):
 class Settings(BaseSettings):
     system: SystemSettings = SystemSettings()
     communication: CommunicationSettings = CommunicationSettings()
+    echonet: EchonetSettings = EchonetSettings()
     simulation: SimulationSettings = SimulationSettings()
     
     _user_config_path: str = "config/user_settings.yaml"

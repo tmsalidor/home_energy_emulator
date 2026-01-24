@@ -3,7 +3,7 @@ import logging
 from typing import Optional, Callable
 import serial_asyncio
 from src.config.settings import settings
-from src.core.echonet import echonet_ctrl
+from src.core.echonet import wisun_echonet_ctrl
 
 logger = logging.getLogger("uvicorn")
 
@@ -177,7 +177,7 @@ class WiSunManager:
             logger.info(f"Received ECHONET packet from {sender_ip}")
             
             # Use Echonet Controller to process
-            response_bytes = echonet_ctrl.handle_packet(data_bytes, (sender_ip, 3610))
+            response_bytes = wisun_echonet_ctrl.handle_packet(data_bytes, (sender_ip, 3610))
             
             if response_bytes:
                 # Send response back via SKSENDTO

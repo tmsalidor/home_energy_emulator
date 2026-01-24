@@ -2,6 +2,7 @@ from nicegui import ui
 from fastapi import FastAPI
 from src.core.engine import engine
 from src.config.settings import settings
+import src.core.echonet_consts as ec
 
 app = FastAPI()
 
@@ -16,6 +17,7 @@ def main_page():
     with ui.tabs().classes('w-full') as tabs:
         dashboard_tab = ui.tab('Dashboard')
         settings_tab = ui.tab('Settings')
+        inspector_tab = ui.tab('Inspector')
 
     with ui.tab_panels(tabs, value=dashboard_tab).classes('w-full'):
         with ui.tab_panel(dashboard_tab):
@@ -97,26 +99,152 @@ def main_page():
                          ui.label().bind_text_from(sl_bat, 'value', backward=lambda v: f"{v:.2f} W").classes('w-20 text-right')
 
         with ui.tab_panel(settings_tab):
-            with ui.column().classes('w-full items-center max-w-lg mx-auto'):
+            with ui.column().classes('w-full mx-auto'):
                 ui.label('Configuration').classes('text-2xl font-bold mb-4')
                 
-                with ui.card().classes('w-full p-4'):
-                    ui.label('Wi-SUN Settings (Require Restart)').classes('text-lg font-bold mb-2')
+                # --- Settings Container (Grid Layout or Flex) ---
+                with ui.row().classes('w-full items-start wrap gap-4'):
                     
-                    id_input = ui.input('B-Route ID', value=settings.communication.b_route_id, 
-                                        placeholder='32 chars hex').classes('w-full')
-                    pwd_input = ui.input('B-Route Password', value=settings.communication.b_route_password, 
-                                         placeholder='12 chars').classes('w-full')
-                    
-                    def save_settings():
-                        settings.communication.b_route_id = id_input.value
-                        settings.communication.b_route_password = pwd_input.value
-                        settings.save_to_yaml()
-                        ui.notify('Settings saved. Please restart the application.', type='positive')
+                    # 1. Wi-SUN Settings Card
+                    with ui.card().classes('w-96 p-4'):
+                        ui.label('Wi-SUN Settings').classes('text-lg font-bold mb-2')
+                        ui.label('Requires Restart').classes('text-xs text-red-500 mb-2')
                         
-                    ui.button('Save Settings', on_click=save_settings).classes('mt-4 w-full')
+                        id_input = ui.input('B-Route ID', value=settings.communication.b_route_id, 
+                                            placeholder='32 chars hex').classes('w-full')
+                        pwd_input = ui.input('B-Route Password', value=settings.communication.b_route_password, 
+                                             placeholder='12 chars').classes('w-full')
+
+                    # 2. ECHONET Lite Property Settings
+                    with ui.column().classes('flex-1 min-w-[300px] gap-4'):
+                        
+                        # Common Properties
+                        with ui.card().classes('w-full p-4'):
+                            ui.label('ECHONET Common').classes('text-lg font-bold mb-2')
+                            maker_input = ui.input('Maker Code (0x8A)', value=settings.echonet.maker_code,
+                                                   placeholder='e.g. 000000').classes('w-full')
+                        
+                        # Node Profile
+                        with ui.card().classes('w-full p-4'):
+                            ui.label('Node Profile (0x0EF001)').classes('text-lg font-bold mb-2')
+                            np_id_input = ui.input('Identification Number', value=settings.echonet.node_profile_id,
+                                                   placeholder='17 bytes hex').classes('w-full')
+
+                        # Solar
+                        with ui.card().classes('w-full p-4'):
+                            ui.label('Solar Power (0x027901)').classes('text-lg font-bold mb-2')
+                            solar_id_input = ui.input('Identification Number', value=settings.echonet.solar_id,
+                                                      placeholder='17 bytes hex').classes('w-full')
+                                                      
+                        # Battery
+                        with ui.card().classes('w-full p-4'):
+                            ui.label('Storage Battery (0x027D01)').classes('text-lg font-bold mb-2')
+                            bat_id_input = ui.input('Identification Number', value=settings.echonet.battery_id,
+                                                    placeholder='17 bytes hex').classes('w-full')
+                            bat_cap_input = ui.number('Rated Capacity (Wh)', value=settings.echonet.battery_rated_capacity_wh,
+                                                      step=100).classes('w-full')
+
+                        # Smart Meter
+                        with ui.card().classes('w-full p-4'):
+                            ui.label('Smart Meter (0x028801)').classes('text-lg font-bold mb-2')
+                            sm_id_input = ui.input('Identification Number', value=settings.echonet.smart_meter_id,
+                                                   placeholder='17 bytes hex').classes('w-full')
+
+                # Save Button (Global)
+                with ui.row().classes('w-full justify-center mt-8 mb-8'):
+                    # ... (Save logic) ...
+                    # (Simplified for ReplacementContent valid context matching, 
+                    # assuming StartLine is inside settings_tab logic, 
+                    # but I need to append inspector_tab AFTER settings_tab panel)
+                    pass
+
+        with ui.tab_panel(inspector_tab):
+            # Inspector UI
+            with ui.column().classes('w-full'):
+                ui.label('ECHONET Lite Property Inspector').classes('text-2xl font-bold mb-4')
+                
+                # Container for inspector content
+                inspector_container = ui.column().classes('w-full gap-4')
+                
+                def refresh_inspector():
+                    inspector_container.clear()
+                    
+                    # Helper to render controller info
+                    def render_controller(name, ctrl):
+                        with inspector_container:
+                            ui.label(f'Controller: {name}').classes('text-xl font-bold mt-4 text-blue-600')
+                            
+                            if not hasattr(ctrl, '_objects') or not ctrl._objects:
+                                ui.label('No objects registered.').classes('text-gray-500 italic ml-4')
+                                return
+
+                            # Iterate over registered objects
+                            for key, obj in ctrl._objects.items():
+                                # key is (Group, Code, Instance)
+                                group, code, inst = key
+                                obj_name = f"Class {group:02X}-{code:02X} Instance {inst:02X}"
+                                
+                                with ui.card().classes('w-full p-2 bg-gray-50 ml-4'):
+                                    with ui.expansion(obj_name, value=True).classes('w-full text-lg'):
+                                        # Property Table
+                                        # Columns: EPC, Name, Value(Hex), Value(Raw/Int if logic exists)
+                                        # We only show Hex for generic inspector
+                                        
+                                        # Get supported EPCs
+                                        # Assuming Adapter has _get_supported_epcs() (BaseAdapter has it)
+                                        # If not, we can't inspect easily without set map
+                                        epcs = []
+                                        if hasattr(obj, '_get_supported_epcs'):
+                                            epcs = obj._get_supported_epcs()
+                                        else:
+                                            # Fallback: Try common ones or check get_map
+                                            epcs = [0x80, 0x82, 0x88, 0x8A] 
+                                        
+                                        # Prepare Rows
+                                        rows = []
+                                        for epc in epcs:
+                                            # Get Name
+                                            name = ec.get_epc_name(group, code, epc)
+                                            
+                                            # Get Value
+                                            try:
+                                                val_bytes = obj.get_property(epc)
+                                                val_hex = val_bytes.hex().upper() if val_bytes else "None"
+                                            except Exception as e:
+                                                val_hex = f"Error: {e}"
+                                            
+                                            rows.append({
+                                                'epc': f"0x{epc:02X}",
+                                                'name': name,
+                                                'value': val_hex
+                                            })
+                                        
+                                        ui.table(
+                                            columns=[
+                                                {'name': 'epc', 'label': 'EPC', 'field': 'epc', 'align': 'left'},
+                                                {'name': 'name', 'label': 'Property Name', 'field': 'name', 'align': 'left'},
+                                                {'name': 'value', 'label': 'Current Value (Hex)', 'field': 'value', 'align': 'left'},
+                                            ],
+                                            rows=rows,
+                                            pagination=None
+                                        ).classes('w-full')
+
+                    # Render Wi-Fi Controller (Solar/Battery)
+                    # Need to import or access global controllers. 
+                    # They are defined at module level bottom, so we access via module or import inside function?
+                    # Python allows accessing module globals if they exist.
+                    # We will import them at top of file or use local import.
+                    from src.core.echonet import wifi_echonet_ctrl, wisun_echonet_ctrl
+                    render_controller("Wi-Fi (UDP port 3610)", wifi_echonet_ctrl)
+                    render_controller("Wi-SUN (B-Route Serial)", wisun_echonet_ctrl)
+
+                ui.button('Refresh Properties', on_click=refresh_inspector, icon='refresh').classes('mb-4')
+                
+                # Initial Load (Delayed to ensure startup finished)
+                ui.timer(1.0, refresh_inspector, once=True)
 
     # UI Update Loop (Defined after sliders to access them)
+    # ... (No change in update_ui logic needed for now) ...
     def update_ui():
         nonlocal is_updating_ui
 
@@ -152,8 +280,8 @@ def main_page():
 # --- ECHONET Lite UDP Server Setup ---
 import asyncio
 import logging
-from src.core.echonet import echonet_ctrl
-from src.core.adapters import SolarAdapter, BatteryAdapter
+from src.core.echonet import wifi_echonet_ctrl, wisun_echonet_ctrl # Separate controllers
+from src.core.adapters import SolarAdapter, BatteryAdapter, NodeProfileAdapter, SmartMeterAdapter # Added SmartMeterAdapter
 from src.core.wisun import wisun_manager # Import Wi-SUN Manager
 
 logger = logging.getLogger("uvicorn")
@@ -161,24 +289,35 @@ logger = logging.getLogger("uvicorn")
 class EchonetProtocol(asyncio.DatagramProtocol):
     def connection_made(self, transport):
         self.transport = transport
-        logger.info(f"ECHONET Lite UDP Server listening on port {settings.communication.echonet_port}")
+        logger.info(f"ECHONET Lite UDP Server (Wi-Fi) listening on port {settings.communication.echonet_port}")
 
     def datagram_received(self, data, addr):
-        # Dispatch to controller
+        # Dispatch to Wi-Fi controller
         # Note: addr is (ip, port)
-        res = echonet_ctrl.handle_packet(data, addr)
+        res = wifi_echonet_ctrl.handle_packet(data, addr)
         if res:
             self.transport.sendto(res, addr)
 
 @app.on_event("startup")
 async def startup_event():
-    # 1. Register Objects
-    # Solar: Class Group 0x02, Class Code 0x79, Instance 0x01
-    echonet_ctrl.register_instance(0x02, 0x79, 0x01, SolarAdapter(engine.solar))
-    # Battery: Class Group 0x02, Class Code 0x7D, Instance 0x01
-    echonet_ctrl.register_instance(0x02, 0x7D, 0x01, BatteryAdapter(engine.battery))
+    # --- 1. Wi-Fi Controller Setup (Solar + Battery) ---
+    # Node Profile for Wi-Fi: Solar(0279) and Battery(027D)
+    wifi_instances = [(0x02, 0x79, 0x01), (0x02, 0x7D, 0x01)]
+    wifi_echonet_ctrl.register_instance(0x0E, 0xF0, 0x01, NodeProfileAdapter(wifi_instances))
     
-    # 2. Start UDP Server (Wi-Fi)
+    wifi_echonet_ctrl.register_instance(0x02, 0x79, 0x01, SolarAdapter(engine.solar))
+    wifi_echonet_ctrl.register_instance(0x02, 0x7D, 0x01, BatteryAdapter(engine.battery))
+    
+    # --- 2. Wi-SUN Controller Setup (Smart Meter) ---
+    # Node Profile for Wi-SUN: Smart Meter(0288)
+    wisun_instances = [(0x02, 0x88, 0x01)]
+    wisun_echonet_ctrl.register_instance(0x0E, 0xF0, 0x01, NodeProfileAdapter(wisun_instances))
+    
+    # Smart Meter: Class Group 0x02, Class Code 0x88, Instance 0x01
+    wisun_echonet_ctrl.register_instance(0x02, 0x88, 0x01, SmartMeterAdapter(engine.smart_meter))
+
+    
+    # 3. Start UDP Server (Wi-Fi)
     try:
         loop = asyncio.get_running_loop()
         await loop.create_datagram_endpoint(
@@ -188,7 +327,7 @@ async def startup_event():
     except Exception as e:
         logger.error(f"Failed to start UDP server: {e}")
 
-    # 3. Start Wi-SUN Manager (B-Route)
+    # 4. Start Wi-SUN Manager (B-Route)
     # Don't block startup if dongle is missing (fail-fast called for system? or just log error)
     # Requirements said "Fail-fast" but maybe for the whole app? 
     # For now, let's just start it without awaiting fully if it has internal loop,
