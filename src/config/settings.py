@@ -65,6 +65,11 @@ class Settings(BaseSettings):
                         return d
                     
                     final_data = deep_update(base_dict, data)
+                    
+                    # Debug: Print loaded keys to verify structure
+                    if 'communication' in final_data:
+                        print(f"DEBUG: Loaded Communication Settings keys: {final_data['communication'].keys()}")
+                    
                     return cls(**final_data)
                     
             except Exception as e:

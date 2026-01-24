@@ -4,6 +4,8 @@ from src.config.settings import settings
 from .echonet import EchonetObjectInterface
 from .models import Solar, Battery, SmartMeter
 from src.core.smart_meter_consts import SMART_METER_STATIC_PROPS
+from src.core.solar_consts import SOLAR_STATIC_PROPS
+from src.core.battery_consts import BATTERY_STATIC_PROPS
 
 class BaseAdapter(EchonetObjectInterface):
     def _build_property_map(self, epcs: list[int]) -> bytes:
@@ -140,27 +142,39 @@ class SolarAdapter(BaseAdapter):
         
     def _get_supported_epcs(self) -> list[int]:
         base = super()._get_supported_epcs()
-        return sorted(list(set(base + [0x83, 0xE0, 0xE1])))
+        # Merge static props keys with dynamic props
+        # Dynamic overrides: E0, E1
+        dynamic_epcs = [0xE0, 0xE1]
+        static_epcs = list(SOLAR_STATIC_PROPS.keys())
+        return sorted(list(set(base + dynamic_epcs + static_epcs)))
 
     def get_property(self, epc: int) -> Optional[bytes]:
         d = self.device
         
-        # Device Specific
+        # 1. Dynamic Measurement Values
+        if epc == 0xE0: # Instantaneous Power Generation (W)
+            # User JSON has 2 bytes [0,0]. We override with dynamic value.
+            val = int(d.instant_generation_power)
+            return struct.pack(">H", min(val, 65535))
+            
+        elif epc == 0xE1: # Cumulative Generation
+            # User JSON has 4 bytes. 
+            val = int(d.cumulative_generation_kwh * 1000) # Assuming 0.001kWh unit? Or 1?
+            # User JSON 225 data: [0,2,39,247] => 147447. If unit 0.001 -> 147kWh. Plausible.
+            return struct.pack(">L", min(val, 0xFFFFFFFF))
+            
+        # 2. Static Properties
+        if epc in SOLAR_STATIC_PROPS:
+            return SOLAR_STATIC_PROPS[epc]
+
+        # 3. Fallback
         if epc == 0x80: 
             return b'\x30' if d.is_running else b'\x31'
-        elif epc == 0x83: # Identification Number
+        elif epc == 0x83: 
              try:
                 return bytes.fromhex(settings.echonet.solar_id)
              except:
                 return b'\xFE' + b'\x00'*16
-            
-        elif epc == 0xE0: # Instantaneous Power Generation (W)
-            val = int(d.instant_generation_power)
-            return struct.pack(">H", min(val, 65535))
-            
-        elif epc == 0xE1: # Cumulative Generation (0.001 kWh)
-            val = int(d.cumulative_generation_kwh * 1000)
-            return struct.pack(">L", min(val, 0xFFFFFFFF))
             
         return super().get_property(epc)
 
@@ -170,11 +184,30 @@ class BatteryAdapter(BaseAdapter):
         
     def _get_supported_epcs(self) -> list[int]:
         base = super()._get_supported_epcs()
-        return sorted(list(set(base + [0x83, 0xD3, 0xE2, 0xE3])))
+        # Merge static props keys with dynamic props
+        # Dynamic overrides: E5 (SOC)
+        # Note: Previous E3 is removed unless in static props (User JSON doesn't have E3)
+        dynamic_epcs = [0xE5]
+        static_epcs = list(BATTERY_STATIC_PROPS.keys())
+        return sorted(list(set(base + dynamic_epcs + static_epcs)))
 
     def get_property(self, epc: int) -> Optional[bytes]:
         d = self.device
         
+        # 1. Dynamic Measurement Values
+        if epc == 0xE5: # Remaining Capacity 3 (SOC %)
+            # User JSON 229: [100]. We override.
+            val = int(d.soc)
+            return struct.pack("B", val)
+            
+        # Note: 0xE2 (Rated Cap) is in static props (JSON 226). We use static value.
+        # Note: 0xD3 (Op Status) is in static props (JSON 211, 4 bytes). We use static value.
+
+        # 2. Static Properties
+        if epc in BATTERY_STATIC_PROPS:
+            return BATTERY_STATIC_PROPS[epc]
+        
+        # 3. Fallback
         if epc == 0x80: 
             return b'\x30'
         elif epc == 0x83:
@@ -182,19 +215,6 @@ class BatteryAdapter(BaseAdapter):
                 return bytes.fromhex(settings.echonet.battery_id)
              except:
                 return b'\xFE' + b'\x00'*16
-            
-        elif epc == 0xE3: # Remaining Capacity (SOC) %
-            val = int(d.soc)
-            return struct.pack("B", val)
-            
-        elif epc == 0xD3: # Working Operation Status
-            if d.is_charging: return b'\x42'
-            if d.is_discharging: return b'\x43'
-            return b'\x41' # Idle
-            
-        elif epc == 0xE2: # Rated Capacity (Wh)
-            val = int(settings.echonet.battery_rated_capacity_wh)
-            return struct.pack(">L", min(val, 0xFFFFFFFF))
 
         return super().get_property(epc)
         
