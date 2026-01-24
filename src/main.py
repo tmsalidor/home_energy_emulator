@@ -45,16 +45,25 @@ def main_page():
         with ui.card().classes('p-4'):
              ui.label('Debug Controls').classes('font-bold')
              
+             # Scenario Control
+             scenario_sw = ui.switch('Scenario Active', value=True, 
+                                   on_change=lambda e: setattr(engine, 'use_scenario', e.value))
+             
+             def manual_override():
+                 engine.use_scenario = False
+                 scenario_sw.set_value(False)
+
              ui.number('Load (W)', value=500, step=100, 
-                       on_change=lambda e: setattr(engine, 'current_load_w', float(e.value or 0)))
+                       on_change=lambda e: (manual_override(), setattr(engine, 'current_load_w', float(e.value or 0))))
              
              with ui.row().classes('items-center'):
                 ui.label('Solar Power:')
-                ui.switch('Zero/3kW', on_change=lambda e: setattr(engine.solar, 'instant_generation_power', 3000.0 if e.value else 0.0))
+                ui.switch('Zero/3kW', on_change=lambda e: (manual_override(), setattr(engine.solar, 'instant_generation_power', 3000.0 if e.value else 0.0)))
              
              with ui.row().classes('items-center'):
                  ui.label('Battery Force:')
                  def toggle_charge(e):
+                     manual_override()
                      engine.battery.is_charging = e.value
                      engine.battery.instant_charge_power = 1000.0 if e.value else 0.0
                  ui.switch('Charge 1kW', on_change=toggle_charge)

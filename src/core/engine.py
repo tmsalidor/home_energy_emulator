@@ -16,6 +16,7 @@ class SimulationEngine:
         self.last_update_time: float = time.time()
         
         # Scenario Data
+        self.use_scenario = True
         self.scenario_data = [] # List of {'time_sec': int, 'load': float, 'solar': float}
         self._load_scenario("data/default_scenario.csv")
         
@@ -103,14 +104,14 @@ class SimulationEngine:
         dt = now - self.last_update_time
         self.last_update_time = now
         
-        # 0. Update Scenario Values
-        s_load, s_solar = self._get_current_scenario_values()
-        # Override only if not manually overridden? 
-        # For emulator, scenario usually drives unless manual override.
-        # Let's overwrite for now, manual controls effectively offset or disable scenario logic?
-        # Or simple: Scenario drives base values.
-        self.current_load_w = s_load
-        self.solar.instant_generation_power = s_solar
+        if self.use_scenario:
+            s_load, s_solar = self._get_current_scenario_values()
+            # Override only if not manually overridden? 
+            # For emulator, scenario usually drives unless manual override.
+            # Let's overwrite for now, manual controls effectively offset or disable scenario logic?
+            # Or simple: Scenario drives base values.
+            self.current_load_w = s_load
+            self.solar.instant_generation_power = s_solar
         
         # 1. Update Battery State (SOC Logic)
         self._update_battery(dt)
