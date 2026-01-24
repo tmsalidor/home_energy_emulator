@@ -33,7 +33,8 @@ def main_page():
                         # Grid Power Color: Red for Buying (pos), Green for Selling (neg)
                         p_grid = engine.smart_meter.instant_current_power
                         color_grid = 'text-red-500' if p_grid > 0 else 'text-green-500'
-                        lbl_grid.set_text(f"Grid: {p_grid:.1f} W").classes(replace=color_grid)
+                        lbl_grid.set_text(f"Grid: {p_grid:.1f} W")
+                        lbl_grid.classes(replace=color_grid)
                         
                         lbl_solar.set_text(f"Solar: {engine.solar.instant_generation_power:.1f} W")
                         
