@@ -8,6 +8,7 @@ services:
     ports:
       - "8080:8080" # NiceGUI / Web Interface
       - "3610:3610/udp" # ECHONET Lite UDP
+    # network_mode: "host" # [Linux/Ubuntu用] マルチキャスト通信のために推奨。有効化時はports設定は無視されます。
     environment:
       - TZ=Asia/Tokyo
       - WI_SUN_DEVICE=/dev/ttyUSB0

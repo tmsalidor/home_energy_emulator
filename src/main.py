@@ -3,6 +3,8 @@ from fastapi import FastAPI
 from src.core.engine import engine
 from src.config.settings import settings
 import src.core.echonet_consts as ec
+import socket
+import struct
 
 app = FastAPI()
 
@@ -317,13 +319,58 @@ async def startup_event():
     wisun_echonet_ctrl.register_instance(0x02, 0x88, 0x01, SmartMeterAdapter(engine.smart_meter))
 
     
-    # 3. Start UDP Server (Wi-Fi)
+    # --- 3. Start UDP Server (Wi-Fi) with Multicast Support ---
     try:
         loop = asyncio.get_running_loop()
+        
+        # Create Socket manually for Multicast
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        
+        # Bind to all interfaces
+        sock.bind(('0.0.0.0', settings.communication.echonet_port))
+        
+        # Join Multicast Group 224.0.23.0
+        mreq = struct.pack("4sl", socket.inet_aton("224.0.23.0"), socket.INADDR_ANY)
+        sock.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, mreq)
+        
+        # Set Multicast TTL
+        sock.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, 2)
+        
         await loop.create_datagram_endpoint(
             lambda: EchonetProtocol(),
-            local_addr=('0.0.0.0', settings.communication.echonet_port)
+            sock=sock
         )
+        logger.info("ECHONET Lite UDP Server started with Multicast (224.0.23.0) support.")
+
+        # --- 3.5 Send Instance List Notification (INF) ---
+        # Announce presence to the network via Multicast
+        try:
+            # 1. Get Instance List (D5) from Node Profile
+            # Node Profile instance tuple: (0x0E, 0xF0, 0x01)
+            node_profile = wifi_echonet_ctrl._objects.get((0x0E, 0xF0, 0x01))
+            if node_profile:
+                d5_value = node_profile.get_property(0xD5) # Instance List Notification
+                if d5_value:
+                    # 2. Build ECHONET Lite Frame (Format 1)
+                    # EHD(2) + TID(2) + SEOJ(3) + DEOJ(3) + ESV(1) + OPC(1) + EPC(1) + PDC(1) + EDT(N)
+                    tid = b'\x00\x00' # Transaction ID
+                    seoj = b'\x0E\xF0\x01' # Source: Node Profile
+                    deoj = b'\x0E\xF0\x01' # Dest: Node Profile (Broadcast to all nodes)
+                    esv = b'\x73' # INF (Property Value Notification)
+                    opc = b'\x01'
+                    epc = b'\xD5'
+                    pdc = bytes([len(d5_value)])
+                    edt = d5_value
+                    
+                    frame = b'\x10\x81' + tid + seoj + deoj + esv + opc + epc + pdc + edt
+                    
+                    # 3. Send to Multicast
+                    sock.sendto(frame, ('224.0.23.0', 3610))
+                    logger.info("Sent Initial Instance List Notification (INF) to 224.0.23.0:3610")
+        except Exception as e:
+            logger.error(f"Failed to send initial announcement: {e}")
+            
     except Exception as e:
         logger.error(f"Failed to start UDP server: {e}")
 
