@@ -152,13 +152,31 @@ def main_page():
                             sm_id_input = ui.input('Identification Number', value=settings.echonet.smart_meter_id,
                                                    placeholder='17 bytes hex').classes('w-full')
 
-                # Save Button (Global)
-                with ui.row().classes('w-full justify-center mt-8 mb-8'):
-                    # ... (Save logic) ...
-                    # (Simplified for ReplacementContent valid context matching, 
-                    # assuming StartLine is inside settings_tab logic, 
-                    # but I need to append inspector_tab AFTER settings_tab panel)
-                    pass
+                def save_settings():
+                    settings.communication.b_route_id = id_input.value
+                    settings.communication.b_route_password = pwd_input.value
+                    settings.echonet.maker_code = maker_input.value
+                    settings.echonet.node_profile_id = np_id_input.value
+                    settings.echonet.solar_id = solar_id_input.value
+                    settings.echonet.battery_id = bat_id_input.value
+                    settings.echonet.battery_rated_capacity_wh = float(bat_cap_input.value or 0)
+                    settings.echonet.smart_meter_id = sm_id_input.value
+                    
+                    settings.save_to_yaml()
+                    ui.notify('Settings saved. Please restart the application.', type='positive')
+                
+                def reset_settings():
+                    import os
+                    user_path = "config/user_settings.yaml"
+                    if os.path.exists(user_path):
+                        os.remove(user_path)
+                        ui.notify('Settings reset to defaults. Please restart the application.', type='warning')
+                    else:
+                        ui.notify('Already using default settings.', type='info')
+
+                with ui.row().classes('w-full mt-4'):
+                    ui.button('Save Settings', on_click=save_settings).classes('flex-1')
+                    ui.button('Reset to Defaults', on_click=reset_settings, color='red').classes('flex-1 ml-4')
 
         with ui.tab_panel(inspector_tab):
             # Inspector UI

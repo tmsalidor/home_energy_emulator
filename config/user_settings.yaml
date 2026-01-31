@@ -1,0 +1,18 @@
+communication:
+  b_route_id: 00112233445566778899AABBCCDDEEFF
+  b_route_password: 0123456789AB
+  echonet_port: 3610
+  wi_sun_channel: null
+  wi_sun_device: /dev/ttyUSB0
+echonet:
+  battery_id: FE00000000000000000000000000000300
+  battery_rated_capacity_wh: 10000.0
+  maker_code: '000000'
+  node_profile_id: FE00000000000000000000000000000100
+  smart_meter_id: FE00000000000000000000000000000400
+  solar_id: FE00000000000000000000000000000200
+simulation:
+  scenario_file: data/default_scenario.csv
+  update_interval_sec: 1.0
+system:
+  log_level: INFO
