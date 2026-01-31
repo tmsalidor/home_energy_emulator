@@ -185,9 +185,9 @@ class BatteryAdapter(BaseAdapter):
     def _get_supported_epcs(self) -> list[int]:
         base = super()._get_supported_epcs()
         # Merge static props keys with dynamic props
-        # Dynamic overrides: E5 (SOC), DA (Operation Mode)
+        # Dynamic overrides: E5 (SOC), DA (Operation Mode), D3 (Follow-up for issue)
         # Note: Previous E3 is removed unless in static props (User JSON doesn't have E3)
-        dynamic_epcs = [0xE5, 0xDA]
+        dynamic_epcs = [0xE5, 0xDA, 0xD3]
         static_epcs = list(BATTERY_STATIC_PROPS.keys())
         return sorted(list(set(base + dynamic_epcs + static_epcs)))
 
@@ -201,24 +201,40 @@ class BatteryAdapter(BaseAdapter):
             return struct.pack("B", val)
 
         elif epc == 0xDA: # Operation Mode Setting
-            # 0x43: Charge, 0x44: Discharge, 0x45: Standby, 0x42: Rapid Charge (Treat as Charge)
+            # 0x41: Rapid Charge, 0x42: Charge, 0x43: Discharge, 0x44: Standby
             if d.is_charging:
-                return b'\x43'
+                return b'\x42'
             elif d.is_discharging:
-                return b'\x44'
+                return b'\x43'
             else:
-                return b'\x42' # Standby (using 0x42 as generic idle here, could be 0x45)
-            
+                return b'\x44' # Standby
+        
+        elif epc == 0xD3: # Instantaneous Charge/Discharge Power
+            # 4 bytes Int (W). Positive value.
+            val = 0
+            if d.is_charging: val = int(d.instant_charge_power)
+            elif d.is_discharging: val = int(d.instant_discharge_power)
+            return struct.pack(">I", val)
+
         # Note: 0xE2 (Rated Cap) is in static props (JSON 226). We use static value.
         # Note: 0xD3 (Op Status) is in static props (JSON 211, 4 bytes). We use static value.
 
         # 2. Static Properties
         if epc in BATTERY_STATIC_PROPS:
+            # If D3 is in static, we override it above.
             return BATTERY_STATIC_PROPS[epc]
         
         # 3. Fallback
         if epc == 0x80: 
-            return b'\x30'
+            # Status: ON (0x30) if running/charging/discharging, OFF (0x31) otherwise.
+            # Usually standard says ON (0x30) during standby too if it's "On", but "Operation Status".
+            # For battery, usually 0x30 always if system is on.
+            # But user says "Always idle". Maybe they mean 0x31? Or 0x30 but inactive?
+            # Let's link it to is_charging/discharging OR just is_running.
+            # Requirement: "Also update 0x80 logic".
+            status = b'\x30' if (d.is_running or d.is_charging or d.is_discharging) else b'\x31'
+            return status
+
         elif epc == 0x83:
              try:
                 return bytes.fromhex(settings.echonet.battery_id)
@@ -233,17 +249,17 @@ class BatteryAdapter(BaseAdapter):
             elif data == b'\x31': self.device.is_running = False
             return True
         elif epc == 0xDA: # Operation Mode Setting
-            if data == b'\x43': # Charge
+            if data == b'\x42' or data == b'\x41': # Charge or Rapid Charge
                 self.device.is_charging = True
                 self.device.is_discharging = False
                 self.device.instant_charge_power = 1000.0 # Fixed per requirement
                 self.device.instant_discharge_power = 0.0
-            elif data == b'\x44': # Discharge
+            elif data == b'\x43': # Discharge
                 self.device.is_charging = False
                 self.device.is_discharging = True
                 self.device.instant_charge_power = 0.0
                 self.device.instant_discharge_power = 1000.0 # Fixed per requirement
-            elif data in [b'\x42', b'\x45', b'\x40', b'\x41']: # Others -> Standby/Idle
+            elif data == b'\x44': # Standby (Explicit)
                 self.device.is_charging = False
                 self.device.is_discharging = False
                 self.device.instant_charge_power = 0.0
