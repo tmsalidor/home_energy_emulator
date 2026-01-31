@@ -301,15 +301,32 @@ def main_page():
         
         lbl_battery.set_text(f"Battery: {bat.soc:.2f}% ({state_str})")
 
-        # 2. Update Sliders from Scenario (if Active)
-        if engine.use_scenario:
-            is_updating_ui = True
-            try:
-                sl_load.value = engine.current_load_w
-                sl_solar.value = engine.solar.instant_generation_power
-                # Battery is not controlled by scenario directly in this simple logic
-            finally:
-                is_updating_ui = False
+        # 2. Update Sliders from Engine State (Scenario or Manual or ECHONET Lite)
+        # Always update UI from model unless user is currently interacting (handled by separate mechanism if needed, 
+        # but here we rely on is_updating_ui flag to suppress on_change loop)
+        
+        # Guard: If we are already in a callback (is_updating_ui check at slider event), this timer update might trigger change?
+        # No, slider.value = X triggers on_change? Yes.
+        # So we set is_updating_ui = True here to block the on_change handler from writing back to engine.
+        is_updating_ui = True
+        try:
+            # Load
+            if hasattr(engine, 'current_load_w'):
+                 sl_load.value = engine.current_load_w
+                 
+            # Solar
+            sl_solar.value = engine.solar.instant_generation_power
+            
+            # Battery
+            bat = engine.battery
+            if bat.is_charging:
+                sl_bat.value = bat.instant_charge_power
+            elif bat.is_discharging:
+                sl_bat.value = -bat.instant_discharge_power
+            else:
+                sl_bat.value = 0.0
+        finally:
+            is_updating_ui = False
         
     ui.timer(0.5, update_ui)
 

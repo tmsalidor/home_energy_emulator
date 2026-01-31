@@ -185,9 +185,9 @@ class BatteryAdapter(BaseAdapter):
     def _get_supported_epcs(self) -> list[int]:
         base = super()._get_supported_epcs()
         # Merge static props keys with dynamic props
-        # Dynamic overrides: E5 (SOC)
+        # Dynamic overrides: E5 (SOC), DA (Operation Mode)
         # Note: Previous E3 is removed unless in static props (User JSON doesn't have E3)
-        dynamic_epcs = [0xE5]
+        dynamic_epcs = [0xE5, 0xDA]
         static_epcs = list(BATTERY_STATIC_PROPS.keys())
         return sorted(list(set(base + dynamic_epcs + static_epcs)))
 
@@ -199,6 +199,15 @@ class BatteryAdapter(BaseAdapter):
             # User JSON 229: [100]. We override.
             val = int(d.soc)
             return struct.pack("B", val)
+
+        elif epc == 0xDA: # Operation Mode Setting
+            # 0x43: Charge, 0x44: Discharge, 0x45: Standby, 0x42: Rapid Charge (Treat as Charge)
+            if d.is_charging:
+                return b'\x43'
+            elif d.is_discharging:
+                return b'\x44'
+            else:
+                return b'\x42' # Standby (using 0x42 as generic idle here, could be 0x45)
             
         # Note: 0xE2 (Rated Cap) is in static props (JSON 226). We use static value.
         # Note: 0xD3 (Op Status) is in static props (JSON 211, 4 bytes). We use static value.
@@ -222,5 +231,22 @@ class BatteryAdapter(BaseAdapter):
         if epc == 0x80:
             if data == b'\x30': self.device.is_running = True
             elif data == b'\x31': self.device.is_running = False
+            return True
+        elif epc == 0xDA: # Operation Mode Setting
+            if data == b'\x43': # Charge
+                self.device.is_charging = True
+                self.device.is_discharging = False
+                self.device.instant_charge_power = 1000.0 # Fixed per requirement
+                self.device.instant_discharge_power = 0.0
+            elif data == b'\x44': # Discharge
+                self.device.is_charging = False
+                self.device.is_discharging = True
+                self.device.instant_charge_power = 0.0
+                self.device.instant_discharge_power = 1000.0 # Fixed per requirement
+            elif data in [b'\x42', b'\x45', b'\x40', b'\x41']: # Others -> Standby/Idle
+                self.device.is_charging = False
+                self.device.is_discharging = False
+                self.device.instant_charge_power = 0.0
+                self.device.instant_discharge_power = 0.0
             return True
         return super().set_property(epc, data)
