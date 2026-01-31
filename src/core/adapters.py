@@ -185,8 +185,8 @@ class BatteryAdapter(BaseAdapter):
     def _get_supported_epcs(self) -> list[int]:
         base = super()._get_supported_epcs()
         # Merge static props keys with dynamic props
-        # Dynamic overrides: DA (Operation Mode), D3 (Follow-up for issue), E2 (Wh), E4 (SOC)
-        dynamic_epcs = [0xDA, 0xD3, 0xE2, 0xE4]
+        # Dynamic overrides: CF (Working Operation Status), DA (Operation Mode Setting), D3 (Follow-up for issue), E2 (Wh), E4 (SOC)
+        dynamic_epcs = [0xCF,0xDA, 0xD3, 0xE2, 0xE4]
         static_epcs = list(BATTERY_STATIC_PROPS.keys())
         return sorted(list(set(base + dynamic_epcs + static_epcs)))
 
@@ -205,7 +205,7 @@ class BatteryAdapter(BaseAdapter):
             wh_val = int(d.rated_capacity_wh * d.soc / 100.0)
             return struct.pack(">L", wh_val)
 
-        elif epc == 0xDA: # Operation Mode Setting
+        elif epc == 0xDA or epc == 0xCF: # Operation Mode Setting or Working Operation Status
             # 0x41: Rapid Charge, 0x42: Charge, 0x43: Discharge, 0x44: Standby
             if d.is_charging:
                 return b'\x42'
