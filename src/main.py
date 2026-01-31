@@ -100,6 +100,15 @@ def main_page():
                          sl_bat = ui.slider(min=-3000, max=3000, step=10, value=0, on_change=update_battery).classes('flex-grow')
                          ui.label().bind_text_from(sl_bat, 'value', backward=lambda v: f"{v:.2f} W").classes('w-20 text-right')
 
+                     # 4. Battery SOC Control
+                     with ui.row().classes('w-full items-center mt-2'):
+                         ui.label('SOC:').classes('w-20 font-bold')
+                         sl_soc = ui.slider(min=0, max=100, step=0.1, value=50, 
+                                            on_change=lambda e: (manual_override(), setattr(engine.battery, 'soc', float(e.value)))
+                                           ).classes('flex-grow')
+                         ui.label().bind_text_from(sl_soc, 'value', backward=lambda v: f"{v:.1f} %").classes('w-20 text-right')
+
+
         with ui.tab_panel(settings_tab):
             with ui.column().classes('w-full mx-auto'):
                 ui.label('Configuration').classes('text-2xl font-bold mb-4')
@@ -325,6 +334,9 @@ def main_page():
                 sl_bat.value = -bat.instant_discharge_power
             else:
                 sl_bat.value = 0.0
+            
+            # Battery SOC
+            sl_soc.value = bat.soc
         finally:
             is_updating_ui = False
         
