@@ -41,20 +41,30 @@ class Settings(BaseSettings):
     _user_config_path: str = "config/user_settings.yaml"
 
     @classmethod
-    def load_from_yaml(cls, default_path: str = "src/config/default_config.yaml") -> "Settings":
-        # Load default
-        base_settings = cls()
+    def load_from_yaml(cls, default_path: str = "config/default_config.yaml") -> "Settings":
+        # Start with internal defaults (Pydantic fields)
+        # Note: If default_config.yaml exists, we should load it.
         
-        # Override with user settings if exists
+        final_data = {}
+        
+        # 1. Load Defaults from YAML
+        if os.path.exists(default_path):
+            try:
+                with open(default_path, 'r', encoding='utf-8') as f:
+                    default_data = yaml.safe_load(f) or {}
+                    final_data.update(default_data)
+                    # print(f"DEBUG: Loaded default settings from {default_path}")
+            except Exception as e:
+                print(f"Failed to load default settings: {e}")
+        else:
+            print(f"Warning: Default config not found at {default_path}")
+
+        # 2. Override with User Settings
         user_path = "config/user_settings.yaml"
         if os.path.exists(user_path):
             try:
                 with open(user_path, 'r', encoding='utf-8') as f:
-                    data = yaml.safe_load(f) or {}
-                    # Deep update logic simplified for Pydantic V2 compat or just re-init
-                    # For simplicity, we assume user_settings.yaml mirrors the structure
-                    # We can use update or parse_obj/model_validate in V2, but here we construct dict first
-                    base_dict = base_settings.model_dump() # Pydantic v2
+                    user_data = yaml.safe_load(f) or {}
                     
                     def deep_update(d, u):
                         for k, v in u.items():
@@ -64,19 +74,15 @@ class Settings(BaseSettings):
                                 d[k] = v
                         return d
                     
-                    final_data = deep_update(base_dict, data)
-                    
-                    # Debug: Print loaded keys to verify structure
-                    if 'communication' in final_data:
-                        print(f"DEBUG: Loaded Communication Settings keys: {final_data['communication'].keys()}")
-                    
-                    return cls(**final_data)
-                    
+                    deep_update(final_data, user_data)
+                    # print(f"DEBUG: Loaded user settings from {user_path}")
             except Exception as e:
                 print(f"Failed to load user settings: {e}")
                 pass
-                
-        return base_settings
+        
+        # 3. Create Instance (Pydantic will treat dict keys as fields, missing keys use class defaults)
+        # We need to handle nested models. Pydantic accepts nested dicts.
+        return cls(**final_data)
 
     def save_to_yaml(self):
         # Save current state to user_settings.yaml
