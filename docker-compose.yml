@@ -4,7 +4,8 @@ services:
   app:
     build: .
     container_name: hems_emulator
-    restart: unless-stopped
+    restart: unless-stopped # 開発中の設定
+    # restart: always # ラズパイ起動時に自動実行したいときには 'always' に変える
     ports:
       - "8080:8080" # NiceGUI / Web Interface
       - "3610:3610/udp" # ECHONET Lite UDP

@@ -10,8 +10,8 @@ app = FastAPI()
 
 @ui.page('/')
 def main_page():
-    # Timer to update simulation logic (runs every 1 sec by default)
-    ui.timer(settings.simulation.update_interval_sec, engine.update_simulation)
+    # Timer to update simulation logic was moved to background task (startup_event)
+    # ui.timer(settings.simulation.update_interval_sec, engine.update_simulation)
     
     # Flag to prevent recursion when updating UI from engine state
     is_updating_ui = False
@@ -350,7 +350,18 @@ class EchonetProtocol(asyncio.DatagramProtocol):
         # Note: addr is (ip, port)
         res = wifi_echonet_ctrl.handle_packet(data, addr)
         if res:
+        if res:
             self.transport.sendto(res, addr)
+
+async def simulation_loop():
+    logger.info("Starting Background Simulation Loop")
+    while True:
+        try:
+            engine.update_simulation()
+        except Exception as e:
+            logger.error(f"Error in simulation loop: {e}")
+        
+        await asyncio.sleep(settings.simulation.update_interval_sec)
 
 @app.on_event("startup")
 async def startup_event():
@@ -435,5 +446,8 @@ async def startup_event():
     # Requirement: "Error stop (Fail-fast)". So we should await and let it crash if fails?
     # But simulation UI is also important. Let's log heavily.
     asyncio.create_task(wisun_manager.start())
+
+    # 5. Start Background Simulation Loop
+    asyncio.create_task(simulation_loop())
 
 ui.run_with(app, title='HEMS Emulator', storage_secret='secret')
