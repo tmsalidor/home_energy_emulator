@@ -185,9 +185,8 @@ class BatteryAdapter(BaseAdapter):
     def _get_supported_epcs(self) -> list[int]:
         base = super()._get_supported_epcs()
         # Merge static props keys with dynamic props
-        # Dynamic overrides: E5 (SOC), DA (Operation Mode), D3 (Follow-up for issue)
-        # Note: Previous E3 is removed unless in static props (User JSON doesn't have E3)
-        dynamic_epcs = [0xE5, 0xDA, 0xD3]
+        # Dynamic overrides: DA (Operation Mode), D3 (Follow-up for issue), E2 (Wh), E4 (SOC)
+        dynamic_epcs = [0xDA, 0xD3, 0xE2, 0xE4]
         static_epcs = list(BATTERY_STATIC_PROPS.keys())
         return sorted(list(set(base + dynamic_epcs + static_epcs)))
 
@@ -195,10 +194,16 @@ class BatteryAdapter(BaseAdapter):
         d = self.device
         
         # 1. Dynamic Measurement Values
-        if epc == 0xE5: # Remaining Capacity 3 (SOC %)
-            # User JSON 229: [100]. We override.
+        if epc == 0xE4: # Remaining stored electricity 3 (SOC %) 
+            # 0-100%, 1 byte
             val = int(d.soc)
             return struct.pack("B", val)
+
+        elif epc == 0xE2: # Remaining stored electricity 1 (Wh)
+            # 4 bytes unsigned long (Wh)
+            # Calculate from rated_capacity_wh * soc / 100
+            wh_val = int(d.rated_capacity_wh * d.soc / 100.0)
+            return struct.pack(">L", wh_val)
 
         elif epc == 0xDA: # Operation Mode Setting
             # 0x41: Rapid Charge, 0x42: Charge, 0x43: Discharge, 0x44: Standby
@@ -215,9 +220,6 @@ class BatteryAdapter(BaseAdapter):
             if d.is_charging: val = int(d.instant_charge_power)
             elif d.is_discharging: val = -int(d.instant_discharge_power)
             return struct.pack(">i", val)
-
-        # Note: 0xE2 (Rated Cap) is in static props (JSON 226). We use static value.
-        # Note: 0xD3 (Op Status) is in static props (JSON 211, 4 bytes). We use static value.
 
         # 2. Static Properties
         if epc in BATTERY_STATIC_PROPS:
