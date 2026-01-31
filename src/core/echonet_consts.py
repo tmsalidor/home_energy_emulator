@@ -84,3 +84,14 @@ def get_epc_name(class_group: int, class_code: int, epc: int) -> str:
     
     # Default Lookup
     return EPC_NAMES.get(epc, f"Unknown EPC (0x{epc:02X})")
+
+# ECHONET Lite Class Name Mapping
+CLASS_NAMES = {
+    (0x02, 0x79): "Solar Power Generation",
+    (0x02, 0x7D): "Storage Battery", 
+    (0x02, 0x88): "Smart Meter",
+    (0x0E, 0xF0): "Node Profile"
+}
+
+def get_class_name(class_group: int, class_code: int) -> str:
+    return CLASS_NAMES.get((class_group, class_code), "Unknown Class")

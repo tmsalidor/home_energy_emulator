@@ -104,6 +104,9 @@ def main_page():
             with ui.column().classes('w-full mx-auto'):
                 ui.label('Configuration').classes('text-2xl font-bold mb-4')
                 
+                # Action Buttons Row (Placed at top)
+                actions_row = ui.row().classes('w-full mb-4')
+                
                 # --- Settings Container (Grid Layout or Flex) ---
                 with ui.row().classes('w-full items-start wrap gap-4'):
                     
@@ -174,7 +177,7 @@ def main_page():
                     else:
                         ui.notify('Already using default settings.', type='info')
 
-                with ui.row().classes('w-full mt-4'):
+                with actions_row:
                     ui.button('Save Settings', on_click=save_settings).classes('flex-1')
                     ui.button('Reset to Defaults', on_click=reset_settings, color='red').classes('flex-1 ml-4')
 
@@ -183,9 +186,15 @@ def main_page():
             with ui.column().classes('w-full'):
                 ui.label('ECHONET Lite Property Inspector').classes('text-2xl font-bold mb-4')
                 
+                # Action Buttons Row (Placed at top)
+                inspector_actions = ui.row().classes('mb-4')
+                
                 # Container for inspector content
                 inspector_container = ui.column().classes('w-full gap-4')
                 
+                # State persistence for expansion items
+                expansion_states = {}
+
                 def refresh_inspector():
                     inspector_container.clear()
                     
@@ -202,10 +211,17 @@ def main_page():
                             for key, obj in ctrl._objects.items():
                                 # key is (Group, Code, Instance)
                                 group, code, inst = key
-                                obj_name = f"Class {group:02X}-{code:02X} Instance {inst:02X}"
+                                obj_name = f"Class {group:02X}-{code:02X} ({ec.get_class_name(group, code)}) Instance {inst:02X}"
                                 
+                                # Determine initial state (Default False if not in dict)
+                                is_expanded = expansion_states.get(key, False)
+
                                 with ui.card().classes('w-full p-2 bg-gray-50 ml-4'):
-                                    with ui.expansion(obj_name, value=True).classes('w-full text-lg'):
+                                    # Create expansion with persisted state and update callback
+                                    expansion = ui.expansion(obj_name, value=is_expanded).classes('w-full text-lg')
+                                    expansion.on_value_change(lambda e, k=key: expansion_states.update({k: e.value}))
+                                    
+                                    with expansion:
                                         # Property Table
                                         # Columns: EPC, Name, Value(Hex), Value(Raw/Int if logic exists)
                                         # We only show Hex for generic inspector
@@ -258,7 +274,8 @@ def main_page():
                     render_controller("Wi-Fi (UDP port 3610)", wifi_echonet_ctrl)
                     render_controller("Wi-SUN (B-Route Serial)", wisun_echonet_ctrl)
 
-                ui.button('Refresh Properties', on_click=refresh_inspector, icon='refresh').classes('mb-4')
+                with inspector_actions:
+                    ui.button('Refresh Properties', on_click=refresh_inspector, icon='refresh')
                 
                 # Initial Load (Delayed to ensure startup finished)
                 ui.timer(1.0, refresh_inspector, once=True)
