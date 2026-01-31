@@ -350,7 +350,6 @@ class EchonetProtocol(asyncio.DatagramProtocol):
         # Note: addr is (ip, port)
         res = wifi_echonet_ctrl.handle_packet(data, addr)
         if res:
-        if res:
             self.transport.sendto(res, addr)
 
 async def simulation_loop():
