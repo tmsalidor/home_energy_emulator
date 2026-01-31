@@ -210,11 +210,11 @@ class BatteryAdapter(BaseAdapter):
                 return b'\x44' # Standby
         
         elif epc == 0xD3: # Instantaneous Charge/Discharge Power
-            # 4 bytes Int (W). Positive value.
+            # 4 bytes Signed Int (W). Positive: Charge, Negative: Discharge
             val = 0
             if d.is_charging: val = int(d.instant_charge_power)
-            elif d.is_discharging: val = int(d.instant_discharge_power)
-            return struct.pack(">I", val)
+            elif d.is_discharging: val = -int(d.instant_discharge_power)
+            return struct.pack(">i", val)
 
         # Note: 0xE2 (Rated Cap) is in static props (JSON 226). We use static value.
         # Note: 0xD3 (Op Status) is in static props (JSON 211, 4 bytes). We use static value.
