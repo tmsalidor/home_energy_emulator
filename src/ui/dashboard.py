@@ -6,7 +6,7 @@ def render():
     is_updating_ui = False
     
     with ui.column().classes('w-full items-center'):
-        ui.label('HEMS IoT Emulator').classes('text-4xl font-bold my-4')
+        ui.label('Home Energy Emulator').classes('text-4xl font-bold my-4')
         
         # Dashboard Card
         with ui.card().classes('w-96'):

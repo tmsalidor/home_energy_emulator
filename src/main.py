@@ -18,4 +18,4 @@ async def startup_event():
     # Start ECHONET Service (Wi-Fi & Wi-SUN)
     await start_echonet_service()
 
-ui.run_with(app, title='HEMS Emulator', storage_secret='secret')
+ui.run_with(app, title='Home Energy Emulator', storage_secret='secret')
