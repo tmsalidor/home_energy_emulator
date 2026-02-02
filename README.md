@@ -1,6 +1,6 @@
-# HEMS IoT Emulator with ECHONET Lite
+# HEMS Devces IoT Emulator with ECHONET Lite
 
-ECHONET Liteプロトコルに対応したHEMS (Home Energy Management System) エミュレーターです。
+ECHONET Liteプロトコルに対応したHEMS (Home Energy Management System) 対応機器エミュレーターです。
 スマートメーター (Bルート対応)、太陽光発電システム、蓄電池システムをエミュレートし、NiceGUIによるWebインターフェースで状態監視・操作が可能です。
 
 ## 特徴
