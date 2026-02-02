@@ -1,5 +1,6 @@
 from nicegui import ui
 from src.core.engine import engine
+from src.core.version import get_git_info
 
 def render():
     is_updating_ui = False
@@ -15,6 +16,10 @@ def render():
             lbl_grid = ui.label().classes('text-lg')
             lbl_solar = ui.label().classes('text-lg')
             lbl_battery = ui.label().classes('text-lg')
+            
+            # Application Version
+            ui.separator().classes('my-2')
+            ui.label(get_git_info()).classes('text-xs text-gray-400 text-center w-full')
 
     # Debug Controls
     with ui.row().classes('w-full justify-center mt-8'):
