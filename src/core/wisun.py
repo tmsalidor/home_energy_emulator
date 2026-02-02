@@ -22,7 +22,7 @@ class SerialInterface:
             )
             logger.info(f"Connected to Wi-SUN dongle at {self.device_path}")
         except Exception as e:
-            logger.error(f"Failed to connect to Wi-SUN dongle: {e}")
+            logger.debug(f"Failed to connect to Wi-SUN dongle: {e}")
             raise
 
     async def write_line(self, line: str):
@@ -70,7 +70,7 @@ class WiSunManager:
             await self._initialize_stack()
             
         except Exception as e:
-            logger.error(f"Wi-SUN Manager start failed: {e}")
+            logger.warning(f"Wi-SUN Dongle not found or failed to connect. Wi-SUN features will be disabled. Error: {e}")
 
     async def _send_command_wait_ok(self, cmd: str, timeout: float = 2.0) -> bool:
         self._response_future = asyncio.Future()

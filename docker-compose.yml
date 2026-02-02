@@ -13,11 +13,11 @@ services:
     environment:
       - TZ=Asia/Tokyo
       - WI_SUN_DEVICE=/dev/ttyUSB0
+    privileged: true
     volumes:
       - ./src:/app/src
       - ./data:/app/data
       - ./config:/app/config
-    devices:
-      - /dev/ttyUSB0:/dev/ttyUSB0 # Requires usbipd-win on Windows/WSL2 or native connection on Linux
+      - /dev:/dev
     tty: true
     stdin_open: true
