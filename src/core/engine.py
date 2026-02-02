@@ -4,6 +4,9 @@ from .models import SmartMeter, Solar, Battery, DeviceType
 
 logger = logging.getLogger(__name__)
 
+from .battery_consts import BATTERY_STATIC_PROPS
+import struct
+
 class SimulationEngine:
     def __init__(self):
         # Initialize devices with default IDs
@@ -20,6 +23,19 @@ class SimulationEngine:
         self.scenario_data = [] # List of {'time_sec': int, 'load': float, 'solar': float}
         self._load_scenario("data/default_scenario.csv")
         
+        if 0xD0 in BATTERY_STATIC_PROPS:
+            try:
+                # 0xD0 is 4 bytes unsigned long (Wh) ? Or 225?
+                # Usually D0 is Rated Electric Energy.
+                # User config has D0 (208) as [0,0,54,176] -> 14000
+                data = BATTERY_STATIC_PROPS[0xD0]
+                # Assuming 4 bytes big endian
+                val = struct.unpack(">L", data)[0]
+                self.battery.rated_capacity_wh = float(val)
+                logger.info(f"Battery Rated Capacity initialized from property 0xD0: {val} Wh")
+            except Exception as e:
+                logger.error(f"Failed to parse Battery Property 0xD0: {e}")
+
         logger.info("Simulation Engine Initialized")
 
     def _load_scenario(self, filepath: str):
@@ -165,9 +181,13 @@ class SimulationEngine:
         # Wh change
         energy_delta_wh = 0.0
         if bat.is_charging:
-            energy_delta_wh += bat.instant_charge_power * (dt / 3600.0)
+            wh_step = bat.instant_charge_power * (dt / 3600.0)
+            energy_delta_wh += wh_step
+            bat.cumulative_charge_wh += wh_step
         if bat.is_discharging:
-            energy_delta_wh -= bat.instant_discharge_power * (dt / 3600.0)
+            wh_step = bat.instant_discharge_power * (dt / 3600.0)
+            energy_delta_wh -= wh_step
+            bat.cumulative_discharge_wh += wh_step
             
         # Update SOC
         # soc_delta = (Wh change / Capacity) * 100

@@ -50,3 +50,7 @@ class Battery(BaseDevice):
     
     # 定格容量 (Wh)
     rated_capacity_wh: float = 10000.0 
+
+    # 積算電力量 (Wh) - 内部管理用 (ECHONET Lite 0xA8, 0xA9 対応)
+    cumulative_charge_wh: float = 0.0
+    cumulative_discharge_wh: float = 0.0 

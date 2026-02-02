@@ -186,7 +186,8 @@ class BatteryAdapter(BaseAdapter):
         base = super()._get_supported_epcs()
         # Merge static props keys with dynamic props
         # Dynamic overrides: CF (Working Operation Status), DA (Operation Mode Setting), D3 (Follow-up for issue), E2 (Wh), E4 (SOC)
-        dynamic_epcs = [0xCF,0xDA, 0xD3, 0xE2, 0xE4]
+        # Added: A4, A5, A8, A9
+        dynamic_epcs = [0xCF, 0xDA, 0xD3, 0xE2, 0xE4, 0xA4, 0xA5, 0xA8, 0xA9]
         static_epcs = list(BATTERY_STATIC_PROPS.keys())
         return sorted(list(set(base + dynamic_epcs + static_epcs)))
 
@@ -198,6 +199,25 @@ class BatteryAdapter(BaseAdapter):
             # 0-100%, 1 byte
             val = int(d.soc)
             return struct.pack("B", val)
+
+        elif epc == 0xA4: # AC Chargeable Electric Energy (Wh)
+            # Rated Capacity - Current Stored Wh
+            current_wh = d.rated_capacity_wh * d.soc / 100.0
+            val = int(d.rated_capacity_wh - current_wh)
+            return struct.pack(">L", max(0, min(val, 0xFFFFFFFF)))
+
+        elif epc == 0xA5: # AC Dischargeable Electric Energy (Wh)
+            # Same as current stored Wh (E2)
+            val = int(d.rated_capacity_wh * d.soc / 100.0)
+            return struct.pack(">L", min(val, 0xFFFFFFFF))
+            
+        elif epc == 0xA8: # AC cumulative charging electric energy (Wh)
+            val = int(d.cumulative_charge_wh)
+            return struct.pack(">L", min(val, 0xFFFFFFFF))
+
+        elif epc == 0xA9: # AC cumulative discharging electric energy (Wh)
+            val = int(d.cumulative_discharge_wh)
+            return struct.pack(">L", min(val, 0xFFFFFFFF))
 
         elif epc == 0xE2: # Remaining stored electricity 1 (Wh)
             # 4 bytes unsigned long (Wh)
