@@ -232,7 +232,8 @@ class WiSunManager:
         # Or SKSTACK consumes exactly datalen bytes.
         
         await self.serial.writer.drain()
-        logger.debug(f"UDP Sent to {ip}: {len(data)} bytes")
+        await self.serial.writer.drain()
+        logger.info(f"TX UDP | Dest:{ip} Port:{port:04X} Data:{data.hex().upper()}")
 
 # Global Instance
 wisun_manager = WiSunManager()
