@@ -90,6 +90,17 @@ class WiSunManager:
         # 1. Reset
         await self.serial.write_line("SKRESET")
         await asyncio.sleep(2.0) # Wait for reboot
+
+        # Extra Initialization
+        await self._send_command_wait_ok("SKINFO")
+        
+        if not await self._send_command_wait_ok("SKSREG S2 29"):
+            logger.error("Failed to set SKSREG S2 29")
+            return
+            
+        if not await self._send_command_wait_ok("SKSREG S3 CAFE"):
+             logger.error("Failed to set SKSREG S3 CAFE")
+             return
         
         # 2. Set Password
         pwd = settings.communication.b_route_password
