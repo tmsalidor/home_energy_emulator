@@ -1,5 +1,5 @@
 communication:
-  b_route_id: 00112233445566778899AABBCCDDEEF0
+  b_route_id: 00112233445566778899AABBCCDDEEFF
   b_route_password: 0123456789AB
   echonet_port: 3610
   wi_sun_channel: null
