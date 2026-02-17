@@ -6,6 +6,7 @@ class DeviceType(str, Enum):
     SMART_METER = "smart_meter"
     SOLAR = "solar"
     BATTERY = "battery"
+    ELECTRIC_WATER_HEATER = "electric_water_heater"
 
 class BaseDevice(BaseModel):
     device_id: str
@@ -54,3 +55,31 @@ class Battery(BaseDevice):
     # 積算電力量 (Wh) - 内部管理用 (ECHONET Lite 0xA8, 0xA9 対応)
     cumulative_charge_wh: float = 0.0
     cumulative_discharge_wh: float = 0.0 
+
+class ElectricWaterHeater(BaseDevice):
+    device_type: Literal[DeviceType.ELECTRIC_WATER_HEATER] = DeviceType.ELECTRIC_WATER_HEATER
+    
+    # 運転状態 (0x80)
+    # BaseDevice.is_running で管理 (True=0x30, False=0x31)
+
+    # 沸き上げ自動設定 (0xB0)
+    # 0x41: 自動, 0x42: 手動沸き上げ, 0x43: 手動沸き上げ停止
+    auto_setting: int = 0x43 
+
+    # 沸き上げ中状態 (0xB2)
+    # 0x41: 沸き上げ中, 0x42: 非沸き上げ中
+    is_heating: bool = False
+
+    # 残湯量計測値 (0xE1)
+    # 単位: 0.1L? ユーザーリクエストでは "10digit/hour" とある。
+    # 生の値として保持する。
+    remaining_hot_water: int = 0
+
+    # タンク容量 (0xE2)
+    # 単位: L? 生の値として保持する。
+    tank_capacity: int = 370 
+    
+    # 湯沸かし電力 (W)
+    # 設定値
+    heating_power_w: float = 1000.0
+

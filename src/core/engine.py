@@ -1,10 +1,11 @@
 import time
 import logging
-from .models import SmartMeter, Solar, Battery, DeviceType
+from .models import SmartMeter, Solar, Battery, DeviceType, ElectricWaterHeater
 
 logger = logging.getLogger(__name__)
 
 from .battery_consts import BATTERY_STATIC_PROPS
+from .water_heater_consts import WATER_HEATER_STATIC_PROPS
 import struct
 
 class SimulationEngine:
@@ -13,6 +14,7 @@ class SimulationEngine:
         self.smart_meter = SmartMeter(device_id="sm_01")
         self.solar = Solar(device_id="sol_01")
         self.battery = Battery(device_id="bat_01")
+        self.water_heater = ElectricWaterHeater(device_id="wh_01")
         
         # Simulation State
         self.current_load_w: float = 500.0  # Base household load
@@ -35,6 +37,23 @@ class SimulationEngine:
                 logger.info(f"Battery Rated Capacity initialized from property 0xD0: {val} Wh")
             except Exception as e:
                 logger.error(f"Failed to parse Battery Property 0xD0: {e}")
+
+            except Exception as e:
+                logger.error(f"Failed to parse Battery Property 0xD0: {e}")
+
+        # Initialize Water Heater Properties
+        # 1. Tank Capacity from Settings
+        try:
+            from src.config.settings import settings
+            self.water_heater.tank_capacity = settings.echonet.water_heater_tank_capacity
+            self.water_heater.heating_power_w = settings.echonet.water_heater_power_w
+            logger.info(f"Water Heater configured: Cap={self.water_heater.tank_capacity}L, Power={self.water_heater.heating_power_w}W")
+        except Exception as e:
+            logger.error(f"Failed to load Water Heater settings: {e}")
+
+        # 2. Remaining Hot Water = Half of Tank Capacity (User Request)
+        self.water_heater.remaining_hot_water = float(self.water_heater.tank_capacity) / 2.0
+        logger.info(f"Water Heater Remaining Hot Water initialized to half capacity: {self.water_heater.remaining_hot_water}L")
 
         logger.info("Simulation Engine Initialized")
 
@@ -132,6 +151,9 @@ class SimulationEngine:
         # 1. Update Battery State (SOC Logic)
         self._update_battery(dt)
         
+        # 1.5 Update Water Heater State
+        self._update_water_heater(dt)
+        
         # 2. Update Grid Power (Power Balance Formula)
         # Formula: P_grid = (P_load + P_charge) - (P_solar + P_discharge)
         
@@ -143,7 +165,10 @@ class SimulationEngine:
         # Guard: Solar power cannot be negative
         if p_solar < 0: p_solar = 0
         
-        p_grid = (p_load + p_charge) - (p_solar + p_discharge)
+        # Water Heater Load
+        p_wh = self.water_heater.heating_power_w if self.water_heater.is_heating else 0.0
+
+        p_grid = (p_load + p_charge + p_wh) - (p_solar + p_discharge)
         
         self.smart_meter.instant_current_power = p_grid
         
@@ -197,6 +222,46 @@ class SimulationEngine:
             
         # Clamp SOC
         bat.soc = max(0.0, min(100.0, bat.soc))
+
+    def _update_water_heater(self, dt: float):
+        """
+        Handle Water Heater Logic
+        """
+        wh = self.water_heater
+        if not wh.is_running:
+            return
+
+        # Decrease when stopped (10 digit/hour)
+        # Increase when heating (1 digit/minute = 60 digit/hour)
+        
+        # 0xB0 = 0x43 (Manual Stop) -> Decrease 10/hour
+        if wh.auto_setting == 0x43:
+            wh.is_heating = False
+            # Decrease 10 per hour => 10/3600 per second
+            decay_rate = 10.0 / 3600.0
+            wh.remaining_hot_water -= decay_rate * dt
+        
+        # 0xB0 = 0x42 (Manual Start) -> Increase 1/minute
+        elif wh.auto_setting == 0x42:
+            wh.is_heating = True
+            # Increase 60 per hour => 60/3600 per second = 1/60 per second
+            fill_rate = 1.0 / 60.0
+            wh.remaining_hot_water += fill_rate * dt
+            
+            # Stop if full
+            if wh.remaining_hot_water >= wh.tank_capacity:
+                wh.remaining_hot_water = float(wh.tank_capacity)
+                wh.auto_setting = 0x43 # Revert to Stop
+                wh.is_heating = False
+                logger.info("Water Heater full. Stopping heating.")
+
+        # Ensure bounds
+        if wh.remaining_hot_water < 0:
+            wh.remaining_hot_water = 0.0
+        # Upper bound is tank capacity (handled above for heating, but clamp generally)
+        if wh.remaining_hot_water > wh.tank_capacity:
+            wh.remaining_hot_water = float(wh.tank_capacity)
+
 
 # Global Singleton
 engine = SimulationEngine()
