@@ -8,6 +8,9 @@ from src.core.solar_consts import SOLAR_STATIC_PROPS
 from src.core.battery_consts import BATTERY_STATIC_PROPS
 
 class BaseAdapter(EchonetObjectInterface):
+    def __init__(self, config_id: str = None):
+        self._config_id = config_id
+
     def _build_property_map(self, epcs: list[int]) -> bytes:
         # ECHONET Lite Property Map Format
         # If count < 16: Byte 1 = count, Bytes 2..n = EPCs
@@ -42,6 +45,14 @@ class BaseAdapter(EchonetObjectInterface):
                 return struct.pack(">I", code_int)[1:] 
             except:
                 return b'\x00\x00\x00'
+        elif epc == 0x83: # Identification Number
+            try:
+                if self._config_id:
+                    return bytes.fromhex(self._config_id)
+            except:
+                pass
+            return b'\xFE' + b'\x00'*16
+            
         elif epc == 0x9D: # Status Change Announcement Property Map
             return self._build_property_map([0x80, 0x88])
         elif epc == 0x9E: # Set Property Map
@@ -56,6 +67,7 @@ class BaseAdapter(EchonetObjectInterface):
 
 class NodeProfileAdapter(BaseAdapter):
     def __init__(self, instances: list[tuple[int, int, int]] = None):
+        super().__init__(settings.echonet.node_profile_id)
         if instances is None:
             # Default: Solar and Battery (for backward compatibility or default wifi)
             # Solar (02, 79, 01), Battery (02, 7D, 01)
@@ -73,11 +85,6 @@ class NodeProfileAdapter(BaseAdapter):
     def get_property(self, epc: int) -> Optional[bytes]:
         if epc == 0x80: return b'\x30'
         elif epc == 0x82: return b'\x01\x0A\x01\x00'
-        elif epc == 0x83:
-            try:
-                return bytes.fromhex(settings.echonet.node_profile_id)
-            except:
-                return b'\xFE' + b'\x00'*16
         elif epc == 0xD5 or epc == 0xD6:
             return self._get_instance_list()
         
@@ -93,6 +100,7 @@ class NodeProfileAdapter(BaseAdapter):
 
 class SmartMeterAdapter(BaseAdapter):
     def __init__(self, device: SmartMeter):
+        super().__init__(settings.echonet.smart_meter_id)
         self.device = device
         
     def _get_supported_epcs(self) -> list[int]:
@@ -108,9 +116,6 @@ class SmartMeterAdapter(BaseAdapter):
         
         # 1. Dynamic Measurement Values (Priority: Simulation Model)
         # These must reflect the current simulation state, overriding static data if any
-        if epc == 0x8A: # FIX: Force use of settings for Maker Code
-            return super().get_property(epc)
-
         if epc == 0xE7: # Instantaneous Electric Power (W)
             val = int(d.instant_current_power)
             return struct.pack(">i", val)
@@ -125,8 +130,8 @@ class SmartMeterAdapter(BaseAdapter):
 
         # 2. Static Properties from User Data (Priority: User JSON)
         # Includes ID(83), Unit(E1), Digits(D7), etc.
-        # FIX: Force use of settings for Maker Code (0x8A) even if present in static props
-        if epc == 0x8A:
+        # FIX: Force use of settings for Maker Code (0x8A) and ID (0x83) even if present in static props
+        if epc == 0x8A or epc == 0x83:
             return super().get_property(epc)
             
         if epc in SMART_METER_STATIC_PROPS:
@@ -135,16 +140,13 @@ class SmartMeterAdapter(BaseAdapter):
         # 3. Fallback to Settings/Defaults (e.g. Status 80 if not in static)
         if epc == 0x80: 
             return b'\x30'
-        elif epc == 0x83:
-             try:
-                return bytes.fromhex(settings.echonet.smart_meter_id)
-             except:
-                return b'\xFE' + b'\x00'*16
+
 
         return super().get_property(epc)
 
 class SolarAdapter(BaseAdapter):
     def __init__(self, device: Solar):
+        super().__init__(settings.echonet.solar_id)
         self.device = device
         
     def _get_supported_epcs(self) -> list[int]:
@@ -171,8 +173,8 @@ class SolarAdapter(BaseAdapter):
             return struct.pack(">L", min(val, 0xFFFFFFFF))
             
         # 2. Static Properties
-        # FIX: Force use of settings for Maker Code (0x8A)
-        if epc == 0x8A:
+        # FIX: Force use of settings for Maker Code (0x8A) and ID (0x83)
+        if epc == 0x8A or epc == 0x83:
             return super().get_property(epc)
 
         if epc in SOLAR_STATIC_PROPS:
@@ -181,16 +183,13 @@ class SolarAdapter(BaseAdapter):
         # 3. Fallback
         if epc == 0x80: 
             return b'\x30' if d.is_running else b'\x31'
-        elif epc == 0x83: 
-             try:
-                return bytes.fromhex(settings.echonet.solar_id)
-             except:
-                return b'\xFE' + b'\x00'*16
+
             
         return super().get_property(epc)
 
 class BatteryAdapter(BaseAdapter):
     def __init__(self, device: Battery):
+        super().__init__(settings.echonet.battery_id)
         self.device = device
         
     def _get_supported_epcs(self) -> list[int]:
@@ -253,7 +252,7 @@ class BatteryAdapter(BaseAdapter):
             return struct.pack(">i", val)
 
         # 2. Static Properties
-        if epc == 0x8A: # FIX: Force use of settings for Maker Code
+        if epc == 0x8A or epc == 0x83: # FIX: Force use of settings for Maker Code and ID
             return super().get_property(epc)
 
         if epc in BATTERY_STATIC_PROPS:
@@ -271,11 +270,7 @@ class BatteryAdapter(BaseAdapter):
             status = b'\x30' if (d.is_running or d.is_charging or d.is_discharging) else b'\x31'
             return status
 
-        elif epc == 0x83:
-             try:
-                return bytes.fromhex(settings.echonet.battery_id)
-             except:
-                return b'\xFE' + b'\x00'*16
+
 
         return super().get_property(epc)
         
