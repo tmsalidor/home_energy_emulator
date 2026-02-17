@@ -11,6 +11,9 @@ echonet:
   node_profile_id: FE00000000000000000000000000000100
   smart_meter_id: FE00000000000000000000000000000400
   solar_id: FE00000000000000000000000000000200
+  wifi_devices:
+  - solar
+  - battery
 simulation:
   scenario_file: data/default_scenario.csv
   update_interval_sec: 1.0

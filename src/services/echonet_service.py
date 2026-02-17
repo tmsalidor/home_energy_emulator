@@ -24,12 +24,27 @@ class EchonetProtocol(asyncio.DatagramProtocol):
 
 async def start_echonet_service():
     # --- 1. Wi-Fi Controller Setup (Solar + Battery) ---
+    # --- 1. Wi-Fi Controller Setup (Solar + Battery) ---
     # Node Profile for Wi-Fi: Solar(0279) and Battery(027D)
-    wifi_instances = [(0x02, 0x79, 0x01), (0x02, 0x7D, 0x01)]
+    
+    wifi_instances = []
+    
+    # Always check settings for enabled devices
+    enabled_devs = settings.echonet.wifi_devices
+    
+    if 'solar' in enabled_devs:
+        wifi_instances.append((0x02, 0x79, 0x01))
+        
+    if 'battery' in enabled_devs:
+        wifi_instances.append((0x02, 0x7D, 0x01))
+        
     wifi_echonet_ctrl.register_instance(0x0E, 0xF0, 0x01, NodeProfileAdapter(wifi_instances))
     
-    wifi_echonet_ctrl.register_instance(0x02, 0x79, 0x01, SolarAdapter(engine.solar))
-    wifi_echonet_ctrl.register_instance(0x02, 0x7D, 0x01, BatteryAdapter(engine.battery))
+    if 'solar' in enabled_devs:
+        wifi_echonet_ctrl.register_instance(0x02, 0x79, 0x01, SolarAdapter(engine.solar))
+        
+    if 'battery' in enabled_devs:
+        wifi_echonet_ctrl.register_instance(0x02, 0x7D, 0x01, BatteryAdapter(engine.battery))
     
     # --- 2. Wi-SUN Controller Setup (Smart Meter) ---
     # Node Profile for Wi-SUN: Smart Meter(0288)

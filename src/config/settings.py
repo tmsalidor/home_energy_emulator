@@ -21,6 +21,7 @@ class EchonetSettings(BaseModel):
     
     # Identification Numbers
     node_profile_id: str = "FE00000000000000000000000000000100" 
+    wifi_devices: list[str] = ["solar", "battery"] # Default enabled devices
     solar_id: str        = "FE00000000000000000000000000000200"
     battery_id: str      = "FE00000000000000000000000000000300"
     smart_meter_id: str  = "FE00000000000000000000000000000400"
