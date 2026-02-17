@@ -108,6 +108,9 @@ class SmartMeterAdapter(BaseAdapter):
         
         # 1. Dynamic Measurement Values (Priority: Simulation Model)
         # These must reflect the current simulation state, overriding static data if any
+        if epc == 0x8A: # FIX: Force use of settings for Maker Code
+            return super().get_property(epc)
+
         if epc == 0xE7: # Instantaneous Electric Power (W)
             val = int(d.instant_current_power)
             return struct.pack(">i", val)
@@ -122,6 +125,10 @@ class SmartMeterAdapter(BaseAdapter):
 
         # 2. Static Properties from User Data (Priority: User JSON)
         # Includes ID(83), Unit(E1), Digits(D7), etc.
+        # FIX: Force use of settings for Maker Code (0x8A) even if present in static props
+        if epc == 0x8A:
+            return super().get_property(epc)
+            
         if epc in SMART_METER_STATIC_PROPS:
             return SMART_METER_STATIC_PROPS[epc]
 
@@ -164,6 +171,10 @@ class SolarAdapter(BaseAdapter):
             return struct.pack(">L", min(val, 0xFFFFFFFF))
             
         # 2. Static Properties
+        # FIX: Force use of settings for Maker Code (0x8A)
+        if epc == 0x8A:
+            return super().get_property(epc)
+
         if epc in SOLAR_STATIC_PROPS:
             return SOLAR_STATIC_PROPS[epc]
 
@@ -242,6 +253,9 @@ class BatteryAdapter(BaseAdapter):
             return struct.pack(">i", val)
 
         # 2. Static Properties
+        if epc == 0x8A: # FIX: Force use of settings for Maker Code
+            return super().get_property(epc)
+
         if epc in BATTERY_STATIC_PROPS:
             # If D3 is in static, we override it above.
             return BATTERY_STATIC_PROPS[epc]
