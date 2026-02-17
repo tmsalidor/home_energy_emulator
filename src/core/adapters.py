@@ -255,20 +255,17 @@ class BatteryAdapter(BaseAdapter):
         if epc == 0x8A or epc == 0x83: # FIX: Force use of settings for Maker Code and ID
             return super().get_property(epc)
 
+        if epc == 0x80: 
+            # Status: ON (0x30) if running/charging/discharging, OFF (0x31) otherwise.
+            status = b'\x30' if (d.is_running or d.is_charging or d.is_discharging) else b'\x31'
+            return status
+
         if epc in BATTERY_STATIC_PROPS:
             # If D3 is in static, we override it above.
             return BATTERY_STATIC_PROPS[epc]
         
         # 3. Fallback
-        if epc == 0x80: 
-            # Status: ON (0x30) if running/charging/discharging, OFF (0x31) otherwise.
-            # Usually standard says ON (0x30) during standby too if it's "On", but "Operation Status".
-            # For battery, usually 0x30 always if system is on.
-            # But user says "Always idle". Maybe they mean 0x31? Or 0x30 but inactive?
-            # Let's link it to is_charging/discharging OR just is_running.
-            # Requirement: "Also update 0x80 logic".
-            status = b'\x30' if (d.is_running or d.is_charging or d.is_discharging) else b'\x31'
-            return status
+
 
 
 
