@@ -251,7 +251,7 @@ class SimulationEngine:
             # Stop if full
             if wh.remaining_hot_water >= wh.tank_capacity:
                 wh.remaining_hot_water = float(wh.tank_capacity)
-                wh.auto_setting = 0x43 # Revert to Stop
+                wh.auto_setting = 0x41 # Revert to Auto
                 wh.is_heating = False
                 logger.info("Water Heater full. Stopping heating.")
 
