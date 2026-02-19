@@ -305,7 +305,7 @@ class ElectricWaterHeaterAdapter(BaseAdapter):
         base = super()._get_supported_epcs()
         # Merge static props keys with dynamic props
         # Dynamic overrides: 0x80, 0xB0, 0xB2, 0xE1, 0xE2
-        dynamic_epcs = [0x80, 0xB0, 0xB2, 0xE1, 0xE2]
+        dynamic_epcs = [0x80, 0xB0, 0xB2, 0xE1, 0xE2, 0xE3, 0xC0]
         static_epcs = list(WATER_HEATER_STATIC_PROPS.keys())
         return sorted(list(set(base + dynamic_epcs + static_epcs)))
 
@@ -338,6 +338,13 @@ class ElectricWaterHeaterAdapter(BaseAdapter):
             # User provided prop default: 0xE2: [1, 114] -> 370. 2 bytes.
             val = int(d.tank_capacity)
             return struct.pack(">H", val)
+
+        elif epc == 0xE3: # Bath Operation Status
+            # 0x41: ON, 0x42: OFF (or similar based on app usage)
+            return bytes([d.e3_bath_operation_status])
+
+        elif epc == 0xC0: # Operation Status / Initial Setting
+            return bytes([d.c0_operation_status])
 
         # 2. Static Properties
         if epc == 0x8A or epc == 0x83: # FIX: Force use of settings for Maker Code and ID
@@ -372,4 +379,12 @@ class ElectricWaterHeaterAdapter(BaseAdapter):
                      self.device.is_heating = False
                      
                 return True
+                
+        elif epc == 0xE3: # Bath Operation Status
+            self.device.e3_bath_operation_status = data[0]
+            return True
+
+        elif epc == 0xC0: # Operation Status
+             self.device.c0_operation_status = data[0]
+             return True
         return super().set_property(epc, data)

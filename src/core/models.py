@@ -83,3 +83,17 @@ class ElectricWaterHeater(BaseDevice):
     # 設定値
     heating_power_w: float = 1000.0
 
+    # 浴槽沸き上げ自動設定 (0xE3)
+    # 0x41: 自動, 0x42: 手動沸き上げ, 0x43: 手動沸き上げ停止
+    # Default: 0x42 (Manual Stop/Off - similar to 0xB0 default 0x43 but complying with request or spec? 
+    # Spec says: 0x41=Auto, 0x42=Manual. Let's use 0x42 as default "Manual" state or 0x43 "Stop" if applicable.
+    # ECHONET spec for 0xE3: 0x41=ON, 0x42=OFF. Wait, let's check spec or assume similar to B0.
+    # Standard ECHONET Lite for 0xE3 (Bath operation status): 0x41=Yes, 0x42=No.
+    # User request: "Setで値を保持して" so we just need storage.
+    e3_bath_operation_status: int = 0x42
+
+    # 拡張動作設定/初期設定 (0xC0)
+    # Spec varies. User just wants Set/Get storage.
+    # Default something reasonable, e.g., 0x41? Or 0x42?
+    c0_operation_status: int = 0x42
+
