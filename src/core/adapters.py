@@ -357,7 +357,7 @@ class ElectricWaterHeaterAdapter(BaseAdapter):
             val = data[0]
             if val in [0x41, 0x42, 0x43]:
                 # User request logic:
-                # If set to 0x43 (Stop), B2 -> 0x42 (Not Heating)
+                # If set to 0x43 (Stop) or 0x41 (Auto), B2 -> 0x42 (Not Heating)
                 # If set to 0x42 (Start), B2 -> 0x41 (Heating)
                 # We update the model, engine loop will handle progressive changes (E1).
                 # But immediate state change is requested?
@@ -368,7 +368,7 @@ class ElectricWaterHeaterAdapter(BaseAdapter):
                 self.device.auto_setting = val
                 if val == 0x42: # Manual Start
                      self.device.is_heating = True
-                elif val == 0x43: # Manual Stop
+                elif val == 0x43 or val == 0x41: # Manual Stop
                      self.device.is_heating = False
                      
                 return True

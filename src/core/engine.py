@@ -231,11 +231,11 @@ class SimulationEngine:
         if not wh.is_running:
             return
 
-        # Decrease when stopped (10 digit/hour)
+        # Decrease when stopped or auto (10 digit/hour)
         # Increase when heating (1 digit/minute = 60 digit/hour)
         
-        # 0xB0 = 0x43 (Manual Stop) -> Decrease 10/hour
-        if wh.auto_setting == 0x43:
+        # 0xB0 = 0x43 (Manual Stop) or 0x41 (Auto) -> Decrease 10/hour
+        if wh.auto_setting == 0x43 or wh.auto_setting == 0x41:
             wh.is_heating = False
             # Decrease 10 per hour => 10/3600 per second
             decay_rate = 10.0 / 3600.0
