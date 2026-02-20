@@ -92,7 +92,7 @@ CLASS_EPCS = {
         0xE9: "Bathroom Priority Setting",
         0xEA: "Bath Operation Status Monitor",
         0xEE: "Bath water volume setting 3",
-    }
+    },
 
     # Solar Power (0x0279)
     (0x02, 0x79): {
