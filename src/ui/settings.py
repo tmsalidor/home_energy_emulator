@@ -72,6 +72,12 @@ def render():
                     np_id_input = ui.input('Identification Number', value=settings.echonet.node_profile_id,
                                            placeholder='17 bytes hex').classes('w-full')
 
+                # Smart Meter
+                with ui.card().classes('w-full p-4'):
+                    ui.label('Smart Meter (0x028801)').classes('text-lg font-bold mb-2')
+                    sm_id_input = ui.input('Identification Number', value=settings.echonet.smart_meter_id,
+                                           placeholder='17 bytes hex').classes('w-full')
+
                 # Solar
                 with ui.card().classes('w-full p-4'):
                     ui.label('Solar Power (0x027901)').classes('text-lg font-bold mb-2')
@@ -95,12 +101,6 @@ def render():
                                              step=10).classes('w-full')
                     wh_power_input = ui.number('Heating Power (W)', value=settings.echonet.water_heater_power_w,
                                                step=100).classes('w-full')
-
-                # Smart Meter
-                with ui.card().classes('w-full p-4'):
-                    ui.label('Smart Meter (0x028801)').classes('text-lg font-bold mb-2')
-                    sm_id_input = ui.input('Identification Number', value=settings.echonet.smart_meter_id,
-                                           placeholder='17 bytes hex').classes('w-full')
 
                 # V2H
                 with ui.card().classes('w-full p-4'):
