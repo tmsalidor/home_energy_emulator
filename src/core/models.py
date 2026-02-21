@@ -116,3 +116,9 @@ class V2H(BaseDevice):
 
     # 放電電力設定値 (0xEC) [W]
     discharge_power_w: float = 3000.0
+
+    # エンジン内部計算用（グリッド計算式に使用）
+    # 今サイクルの実際の充電電力 [W]（充電中のみ正値）
+    current_charge_w: float = 0.0
+    # 今サイクルの実際の放電電力 [W]（放電中のみ正値）
+    current_discharge_w: float = 0.0

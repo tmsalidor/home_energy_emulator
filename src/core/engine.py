@@ -186,7 +186,11 @@ class SimulationEngine:
         # Water Heater Load
         p_wh = self.water_heater.heating_power_w if self.water_heater.is_heating else 0.0
 
-        p_grid = (p_load + p_charge + p_wh) - (p_solar + p_discharge)
+        # V2H Load / Discharge
+        p_v2h_charge = self.v2h.current_charge_w
+        p_v2h_discharge = self.v2h.current_discharge_w
+
+        p_grid = (p_load + p_charge + p_wh + p_v2h_charge) - (p_solar + p_discharge + p_v2h_discharge)
         
         self.smart_meter.instant_current_power = p_grid
         
@@ -283,43 +287,60 @@ class SimulationEngine:
     def _update_v2h(self, dt: float):
         """
         V2H (電気自動車充放電器) のシミュレーションロジック
-        充電: 残容量を充電電力で増加 + Loadに充電電力を加算
-        放電: Loadが50Wを超えている分を放電してLoadを削減
+        充電: V2Hを負荷としてグリッド計算式に加算（current_charge_wをセット）
+        放電: V2Hを発電源としてグリッド計算式に加算（current_discharge_wをセット）
+                放電判断は「正味ネット販電電力（太陽光/バッテリー差引後）」で判断
         """
         v2h = self.v2h
+        # 前サイクルの電力値をリセット
+        v2h.current_charge_w = 0.0
+        v2h.current_discharge_w = 0.0
+
         if not v2h.is_running or not v2h.vehicle_connected:
             return
 
         mode = v2h.operation_mode
 
         if mode == 0x42:  # 充電
-            # Load に充電電力分を加算（グリッドから引く）
+            # V2Hを負荷としてグリッド計算式に追加（グリッドから引く）
             charge_wh = v2h.charge_power_w * (dt / 3600.0)
-            self.current_load_w += v2h.charge_power_w
+            v2h.current_charge_w = v2h.charge_power_w
             v2h.remaining_capacity_wh += charge_wh
 
-            # 満充電チェック
+            # 満充電Check
             if v2h.remaining_capacity_wh >= v2h.battery_capacity_wh:
                 v2h.remaining_capacity_wh = v2h.battery_capacity_wh
                 v2h.operation_mode = 0x44  # 待機
+                v2h.current_charge_w = 0.0
                 logger.info("V2H: Fully charged. Mode -> Standby (0x44)")
 
         elif mode == 0x43:  # 放電
-            # Loadが50Wを超えている分を計算
-            over_50 = self.current_load_w - 50.0
+            # 「ネット販電電力」を計算（堆键買電量）
+            # 太陽光・バッテリー放電を差し引いた後の正味販電量をV2Hが不足する
+            bat = self.battery
+            wh = self.water_heater
+            p_solar = max(0.0, self.solar.instant_generation_power)
+            p_bat_discharge = bat.instant_discharge_power if bat.is_discharging else 0.0
+            p_bat_charge    = bat.instant_charge_power    if bat.is_charging    else 0.0
+            p_wh            = wh.heating_power_w          if wh.is_heating       else 0.0
+
+            # V2Hがない場合のネット販電電力（正=買電）
+            net_grid = (self.current_load_w + p_bat_charge + p_wh) - (p_solar + p_bat_discharge)
+
+            # 買電量が50Wを超えている場合にのみ放電
+            over_50 = net_grid - 50.0
             if over_50 > 0:
-                # 放電量 = min(超過分, 放電電力設定値)
                 discharge_w = min(over_50, v2h.discharge_power_w)
                 discharge_wh = discharge_w * (dt / 3600.0)
 
-                # Loadから放電分を削減（最低0W）
-                self.current_load_w = max(0.0, self.current_load_w - discharge_w)
+                v2h.current_discharge_w = discharge_w
                 v2h.remaining_capacity_wh -= discharge_wh
 
-                # 残量枯渇チェック
+                # 残量枯源Check
                 if v2h.remaining_capacity_wh <= 0:
                     v2h.remaining_capacity_wh = 0.0
                     v2h.operation_mode = 0x44  # 待機
+                    v2h.current_discharge_w = 0.0
                     logger.info("V2H: Battery empty. Mode -> Standby (0x44)")
 
         # 残容量クランプ
