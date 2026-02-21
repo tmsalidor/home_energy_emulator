@@ -1,6 +1,6 @@
 import time
 import logging
-from .models import SmartMeter, Solar, Battery, DeviceType, ElectricWaterHeater
+from .models import SmartMeter, Solar, Battery, DeviceType, ElectricWaterHeater, V2H
 
 logger = logging.getLogger(__name__)
 
@@ -15,6 +15,7 @@ class SimulationEngine:
         self.solar = Solar(device_id="sol_01")
         self.battery = Battery(device_id="bat_01")
         self.water_heater = ElectricWaterHeater(device_id="wh_01")
+        self.v2h = V2H(device_id="v2h_01")
         
         # Simulation State
         self.current_load_w: float = 500.0  # Base household load
@@ -54,6 +55,20 @@ class SimulationEngine:
         # 2. Remaining Hot Water = Half of Tank Capacity (User Request)
         self.water_heater.remaining_hot_water = float(self.water_heater.tank_capacity) / 2.0
         logger.info(f"Water Heater Remaining Hot Water initialized to half capacity: {self.water_heater.remaining_hot_water}L")
+
+        # Initialize V2H Properties from Settings
+        try:
+            from src.config.settings import settings
+            self.v2h.battery_capacity_wh = settings.echonet.v2h_battery_capacity_wh
+            self.v2h.charge_power_w = settings.echonet.v2h_charge_power_w
+            self.v2h.discharge_power_w = settings.echonet.v2h_discharge_power_w
+            # 初期残容量 = 車載電池放電可能容量の50%
+            self.v2h.remaining_capacity_wh = self.v2h.battery_capacity_wh * 0.5
+            logger.info(f"V2H configured: Cap={self.v2h.battery_capacity_wh}Wh, "
+                        f"Remain={self.v2h.remaining_capacity_wh}Wh, "
+                        f"ChargePow={self.v2h.charge_power_w}W, DischargePow={self.v2h.discharge_power_w}W")
+        except Exception as e:
+            logger.error(f"Failed to load V2H settings: {e}")
 
         logger.info("Simulation Engine Initialized")
 
@@ -153,6 +168,9 @@ class SimulationEngine:
         
         # 1.5 Update Water Heater State
         self._update_water_heater(dt)
+
+        # 1.7 Update V2H State
+        self._update_v2h(dt)
         
         # 2. Update Grid Power (Power Balance Formula)
         # Formula: P_grid = (P_load + P_charge) - (P_solar + P_discharge)
@@ -168,7 +186,11 @@ class SimulationEngine:
         # Water Heater Load
         p_wh = self.water_heater.heating_power_w if self.water_heater.is_heating else 0.0
 
-        p_grid = (p_load + p_charge + p_wh) - (p_solar + p_discharge)
+        # V2H Load / Discharge
+        p_v2h_charge = self.v2h.current_charge_w
+        p_v2h_discharge = self.v2h.current_discharge_w
+
+        p_grid = (p_load + p_charge + p_wh + p_v2h_charge) - (p_solar + p_discharge + p_v2h_discharge)
         
         self.smart_meter.instant_current_power = p_grid
         
@@ -261,6 +283,70 @@ class SimulationEngine:
         # Upper bound is tank capacity (handled above for heating, but clamp generally)
         if wh.remaining_hot_water > wh.tank_capacity:
             wh.remaining_hot_water = float(wh.tank_capacity)
+
+    def _update_v2h(self, dt: float):
+        """
+        V2H (電気自動車充放電器) のシミュレーションロジック
+        充電: V2Hを負荷としてグリッド計算式に加算（current_charge_wをセット）
+        放電: V2Hを発電源としてグリッド計算式に加算（current_discharge_wをセット）
+                放電判断は「正味ネット販電電力（太陽光/バッテリー差引後）」で判断
+        """
+        v2h = self.v2h
+        # 前サイクルの電力値をリセット
+        v2h.current_charge_w = 0.0
+        v2h.current_discharge_w = 0.0
+
+        if not v2h.is_running or not v2h.vehicle_connected:
+            return
+
+        mode = v2h.operation_mode
+
+        if mode == 0x42:  # 充電
+            # V2Hを負荷としてグリッド計算式に追加（グリッドから引く）
+            charge_wh = v2h.charge_power_w * (dt / 3600.0)
+            v2h.current_charge_w = v2h.charge_power_w
+            v2h.remaining_capacity_wh += charge_wh
+            v2h.cumulative_charge_wh += charge_wh  # 積算充電電力量を更新
+
+            # 満充電Check
+            if v2h.remaining_capacity_wh >= v2h.battery_capacity_wh:
+                v2h.remaining_capacity_wh = v2h.battery_capacity_wh
+                v2h.operation_mode = 0x44  # 待機
+                v2h.current_charge_w = 0.0
+                logger.info("V2H: Fully charged. Mode -> Standby (0x44)")
+
+        elif mode == 0x43:  # 放電
+            # 「ネット販電電力」を計算（堆键買電量）
+            # 太陽光・バッテリー放電を差し引いた後の正味販電量をV2Hが不足する
+            bat = self.battery
+            wh = self.water_heater
+            p_solar = max(0.0, self.solar.instant_generation_power)
+            p_bat_discharge = bat.instant_discharge_power if bat.is_discharging else 0.0
+            p_bat_charge    = bat.instant_charge_power    if bat.is_charging    else 0.0
+            p_wh            = wh.heating_power_w          if wh.is_heating       else 0.0
+
+            # V2Hがない場合のネット販電電力（正=買電）
+            net_grid = (self.current_load_w + p_bat_charge + p_wh) - (p_solar + p_bat_discharge)
+
+            # 買電量が50Wを超えている場合にのみ放電
+            over_50 = net_grid - 50.0
+            if over_50 > 0:
+                discharge_w = min(over_50, v2h.discharge_power_w)
+                discharge_wh = discharge_w * (dt / 3600.0)
+
+                v2h.current_discharge_w = discharge_w
+                v2h.remaining_capacity_wh -= discharge_wh
+                v2h.cumulative_discharge_wh += discharge_wh  # 積算放電電力量を更新
+
+                # 残量枯源Check
+                if v2h.remaining_capacity_wh <= 0:
+                    v2h.remaining_capacity_wh = 0.0
+                    v2h.operation_mode = 0x44  # 待機
+                    v2h.current_discharge_w = 0.0
+                    logger.info("V2H: Battery empty. Mode -> Standby (0x44)")
+
+        # 残容量クランプ
+        v2h.remaining_capacity_wh = max(0.0, min(v2h.remaining_capacity_wh, v2h.battery_capacity_wh))
 
 
 # Global Singleton

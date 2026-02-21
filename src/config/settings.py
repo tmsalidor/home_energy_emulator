@@ -20,19 +20,24 @@ class EchonetSettings(BaseModel):
     maker_code: str = "000106" # 3 bytes hex
     
     # Identification Numbers
-    node_profile_id: str = "FE00000000000000000000000000000100" 
+    node_profile_id: str = "FE00000000000000000000000000000000" 
     wifi_devices: list[str] = ["solar", "battery"] # Default enabled devices
     solar_id: str        = "FE00000000000000000000000000000200"
     battery_id: str      = "FE00000000000000000000000000000300"
     water_heater_id: str = "FE00000000000000000000000000000400" # Smart Meter is 0400? Wait, check original file.
-    smart_meter_id: str  = "FE00000000000000000000000000000000" # Shifted? Or strict ID? 
+    smart_meter_id: str  = "FE00000000000000000000000000000100" # Shifted? Or strict ID? 
     # Original file had smart_meter_id 0400. Users usually don't overlap. 
     # Let's check original content of settings.py again to be safe about IDs.
     
     # Device Specific Defaults
     battery_rated_capacity_wh: float = 10000.0
-    water_heater_tank_capacity: int = 370
-    water_heater_power_w: float = 1000.0
+    water_heater_tank_capacity: int = 500
+    water_heater_power_w: float = 1200.0
+    # V2H (Electric Vehicle Charger/Discharger 0x027E)
+    v2h_id: str = "FE00000000000000000000000000000500"
+    v2h_battery_capacity_wh: float = 50000.0
+    v2h_charge_power_w: float = 3000.0
+    v2h_discharge_power_w: float = 3000.0
 
 class SimulationSettings(BaseModel):
     update_interval_sec: float = 1.0

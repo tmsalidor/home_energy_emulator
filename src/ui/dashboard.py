@@ -17,6 +17,7 @@ def render():
             lbl_solar = ui.label().classes('text-lg')
             lbl_battery = ui.label().classes('text-lg')
             lbl_wh = ui.label().classes('text-lg')
+            lbl_v2h = ui.label().classes('text-lg')
             
             # Application Version
             ui.separator().classes('my-2')
@@ -135,6 +136,39 @@ def render():
                         sl_wh_power = ui.slider(min=0, max=3000, step=100, value=0, on_change=update_wh_power).classes('flex-grow')
                         ui.label().bind_text_from(sl_wh_power, 'value', backward=lambda v: f"{int(v)} W").classes('w-20 text-right')
 
+                # 5. V2H Control
+                with ui.card().classes('w-96 p-4'):
+                    ui.label('V2H (EV Charger/Discharger)').classes('text-lg font-bold mb-2')
+
+                    # SOC (残容量)
+                    with ui.row().classes('w-full items-center mb-2'):
+                        ui.label('SOC:').classes('w-20 font-bold')
+                        def update_v2h_soc(e):
+                            if is_updating_ui: return
+                            manual_override()
+                            v2h = engine.v2h
+                            pct = float(e.value) / 100.0  # 0-100% -> 0.0-1.0
+                            v2h.remaining_capacity_wh = v2h.battery_capacity_wh * pct
+                        sl_v2h_soc = ui.slider(min=0, max=100, step=0.1, value=50,
+                                               on_change=update_v2h_soc).classes('flex-grow')
+                        ui.label().bind_text_from(sl_v2h_soc, 'value', backward=lambda v: f"{v:.1f} %").classes('w-20 text-right')
+
+                    # 充電電力設定値 (0xEB)
+                    with ui.row().classes('w-full items-center mb-2'):
+                        ui.label('Charge:').classes('w-20 font-bold')
+                        sl_v2h_charge = ui.slider(min=0, max=6000, step=100, value=3000,
+                                                  on_change=lambda e: (manual_override(), setattr(engine.v2h, 'charge_power_w', float(e.value)))
+                                                 ).classes('flex-grow')
+                        ui.label().bind_text_from(sl_v2h_charge, 'value', backward=lambda v: f"{int(v)} W").classes('w-20 text-right')
+
+                    # 放電電力設定値 (0xEC)
+                    with ui.row().classes('w-full items-center'):
+                        ui.label('Discharge:').classes('w-20 font-bold')
+                        sl_v2h_discharge = ui.slider(min=0, max=6000, step=100, value=3000,
+                                                     on_change=lambda e: (manual_override(), setattr(engine.v2h, 'discharge_power_w', float(e.value)))
+                                                    ).classes('flex-grow')
+                        ui.label().bind_text_from(sl_v2h_discharge, 'value', backward=lambda v: f"{int(v)} W").classes('w-20 text-right')
+
 
     def update_ui():
         nonlocal is_updating_ui
@@ -193,6 +227,22 @@ def render():
                 sl_wh_power.value = wh.heating_power_w
             else:
                 sl_wh_power.value = 0.0
+
+            # V2H
+            v2h = engine.v2h
+            v2h_mode_names = {0x42: 'Charging', 0x43: 'Discharging', 0x44: 'Standby', 0x47: 'Stop'}
+            v2h_conn = 'Connected' if v2h.vehicle_connected else 'Disconnected'
+            v2h_mode = v2h_mode_names.get(v2h.operation_mode, f'0x{v2h.operation_mode:02X}')
+            if v2h.battery_capacity_wh > 0:
+                v2h_soc_pct = v2h.remaining_capacity_wh / v2h.battery_capacity_wh * 100.0
+            else:
+                v2h_soc_pct = 0.0
+            lbl_v2h.set_text(f"V2H: {v2h_soc_pct:.1f}% ({v2h_conn}, {v2h_mode})")
+
+            # V2H スライダー更新
+            sl_v2h_soc.value = v2h_soc_pct
+            sl_v2h_charge.value = v2h.charge_power_w
+            sl_v2h_discharge.value = v2h.discharge_power_w
         finally:
             is_updating_ui = False
         
