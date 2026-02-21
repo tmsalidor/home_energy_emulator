@@ -490,11 +490,6 @@ class V2HAdapter(BaseAdapter):
                 d.vehicle_connected = True
                 d.operation_mode = 0x44  # 待機
                 logger.info("V2H: Vehicle connected. Mode -> Standby (0x44)")
-            else:
-                # 接続 -> 切断
-                d.vehicle_connected = False
-                d.operation_mode = 0x47  # 停止
-                logger.info("V2H: Vehicle disconnected. Mode -> Stop (0x47)")
             return True
 
         elif epc == 0xDA:  # 運転モード設定
@@ -502,7 +497,7 @@ class V2HAdapter(BaseAdapter):
                 logger.warning("V2H: SET 0xDA rejected (vehicle not connected)")
                 return False  # 未接続時は失敗
             val = data[0] if data else 0
-            if val not in (0x42, 0x43, 0x44):  # 充電/放電/待機のみ許可
+            if val not in (0x42, 0x43, 0x44, 0x47):  # 充電/放電/待機/停止のみ許可
                 logger.warning(f"V2H: SET 0xDA rejected (invalid value: 0x{val:02X})")
                 return False
             d.operation_mode = val
