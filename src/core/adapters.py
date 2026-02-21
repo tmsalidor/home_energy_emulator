@@ -426,9 +426,12 @@ class V2HAdapter(BaseAdapter):
             val = int(d.remaining_capacity_wh)
             return struct.pack('>L', max(0, min(val, 0xFFFFFFFF)))
 
-        elif epc == 0xE4:  # 車載電池の電池残容量 2
-            val = int(d.remaining_capacity_wh) / int(d.battery_capacity_wh)
-            return bytes(val)
+        elif epc == 0xE4:  # 車載電池の電池残容量 2 (%) 1バイト
+            if d.battery_capacity_wh > 0:
+                val = int((d.remaining_capacity_wh / d.battery_capacity_wh) * 100)
+            else:
+                val = 0
+            return struct.pack('B', max(0, min(val, 100)))
 
         elif epc == 0xC7:  # 車両接続・充放電可否状態
             return b'\x43' if d.vehicle_connected else b'\x30'
