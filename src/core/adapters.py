@@ -2,10 +2,11 @@ import struct
 from typing import Optional
 from src.config.settings import settings
 from .echonet import EchonetObjectInterface
-from .models import Solar, Battery, SmartMeter
+from .models import Solar, Battery, SmartMeter, ElectricWaterHeater
 from src.core.smart_meter_consts import SMART_METER_STATIC_PROPS
 from src.core.solar_consts import SOLAR_STATIC_PROPS
 from src.core.battery_consts import BATTERY_STATIC_PROPS
+from src.core.water_heater_consts import WATER_HEATER_STATIC_PROPS
 
 class BaseAdapter(EchonetObjectInterface):
     def __init__(self, config_id: str = None):
@@ -293,4 +294,97 @@ class BatteryAdapter(BaseAdapter):
                 self.device.instant_charge_power = 0.0
                 self.device.instant_discharge_power = 0.0
             return True
+        return super().set_property(epc, data)
+
+class ElectricWaterHeaterAdapter(BaseAdapter):
+    def __init__(self, device: ElectricWaterHeater):
+        super().__init__(settings.echonet.water_heater_id)
+        self.device = device
+
+    def _get_supported_epcs(self) -> list[int]:
+        base = super()._get_supported_epcs()
+        # Merge static props keys with dynamic props
+        # Dynamic overrides: 0x80, 0xB0, 0xB2, 0xE1, 0xE2
+        dynamic_epcs = [0x80, 0xB0, 0xB2, 0xE1, 0xE2, 0xE3, 0xC0]
+        static_epcs = list(WATER_HEATER_STATIC_PROPS.keys())
+        return sorted(list(set(base + dynamic_epcs + static_epcs)))
+
+    def get_property(self, epc: int) -> Optional[bytes]:
+        d = self.device
+        
+        # 1. Dynamic Values
+        if epc == 0x80: # Status
+            return b'\x30' if d.is_running else b'\x31'
+            
+        elif epc == 0xB0: # Auto Setting
+            # 0x41: Auto, 0x42: Manual Start, 0x43: Manual Stop
+            return bytes([d.auto_setting])
+            
+        elif epc == 0xB2: # Heating Status
+            # 0x41: Heating, 0x42: Not Heating (as per request)
+            return b'\x41' if d.is_heating else b'\x42'
+            
+        elif epc == 0xE1: # Remaining Hot Water
+            # User request: "raw value"
+            # It seems user treats 0xE1 as a number corresponding to digits. 10digits/hour.
+            # ECHONET spec says 0xE1 is "Measured remaining hot water amount".
+            # User provided prop default: 0xE1: [0, 185].
+            # We return as 2 bytes? Or 1?
+            # User provided props has 0xE1: [0, 185] -> 2 bytes.
+            val = int(d.remaining_hot_water)
+            return struct.pack(">H", val)
+
+        elif epc == 0xE2: # Tank Capacity
+            # User provided prop default: 0xE2: [1, 114] -> 370. 2 bytes.
+            val = int(d.tank_capacity)
+            return struct.pack(">H", val)
+
+        elif epc == 0xE3: # Bath Operation Status
+            # 0x41: ON, 0x42: OFF (or similar based on app usage)
+            return bytes([d.e3_bath_operation_status])
+
+        elif epc == 0xC0: # Operation Status / Initial Setting
+            return bytes([d.c0_operation_status])
+
+        # 2. Static Properties
+        if epc == 0x8A or epc == 0x83: # FIX: Force use of settings for Maker Code and ID
+            return super().get_property(epc)
+
+        if epc in WATER_HEATER_STATIC_PROPS:
+            return WATER_HEATER_STATIC_PROPS[epc]
+
+        return super().get_property(epc)
+
+    def set_property(self, epc: int, data: bytes) -> bool:
+        if epc == 0x80:
+            if data == b'\x30': self.device.is_running = True
+            elif data == b'\x31': self.device.is_running = False
+            return True
+        elif epc == 0xB0: # Auto Setting
+            val = data[0]
+            if val in [0x41, 0x42, 0x43]:
+                # User request logic:
+                # If set to 0x43 (Stop) or 0x41 (Auto), B2 -> 0x42 (Not Heating)
+                # If set to 0x42 (Start), B2 -> 0x41 (Heating)
+                # We update the model, engine loop will handle progressive changes (E1).
+                # But immediate state change is requested?
+                # "When 0xB0 is ... 0x43, ... 0xE1 decreases..." -> Engines job.
+                # "When 0xB0 is ... 0x42, ... 0xE1 increases..."
+                
+                # Immediate reaction to Set:
+                self.device.auto_setting = val
+                if val == 0x42: # Manual Start
+                     self.device.is_heating = True
+                elif val == 0x43 or val == 0x41: # Manual Stop
+                     self.device.is_heating = False
+                     
+                return True
+                
+        elif epc == 0xE3: # Bath Operation Status
+            self.device.e3_bath_operation_status = data[0]
+            return True
+
+        elif epc == 0xC0: # Operation Status
+             self.device.c0_operation_status = data[0]
+             return True
         return super().set_property(epc, data)

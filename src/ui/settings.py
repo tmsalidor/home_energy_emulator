@@ -36,12 +36,14 @@ def render():
                 
                 chk_solar = ui.checkbox('Solar Power (0x0279)', value='solar' in wifi_devs).classes('w-full')
                 chk_battery = ui.checkbox('Storage Battery (0x027D)', value='battery' in wifi_devs).classes('w-full')
+                chk_wh = ui.checkbox('Elec. Water Heater (0x026B)', value='water_heater' in wifi_devs).classes('w-full')
                 
                 # Logic to limit selection to 3 (currently only 2 options so logic is trivial but implemented for future)
                 def check_limit():
                     selected = 0
                     if chk_solar.value: selected += 1
                     if chk_battery.value: selected += 1
+                    if chk_wh.value: selected += 1
                     
                     if selected > 3:
                         ui.notify('Maximum 3 devices allowed.', type='warning')
@@ -50,6 +52,7 @@ def render():
                         
                 chk_solar.on_value_change(check_limit)
                 chk_battery.on_value_change(check_limit)
+                chk_wh.on_value_change(check_limit)
 
             # 2. ECHONET Lite Property Settings
             with ui.column().classes('flex-1 min-w-[300px] gap-4'):
@@ -80,6 +83,16 @@ def render():
                     bat_cap_input = ui.number('Rated Capacity (Wh)', value=settings.echonet.battery_rated_capacity_wh,
                                               step=100).classes('w-full')
 
+                # Water Heater
+                with ui.card().classes('w-full p-4'):
+                    ui.label('Elec. Water Heater (0x026B01)').classes('text-lg font-bold mb-2')
+                    wh_id_input = ui.input('Identification Number', value=settings.echonet.water_heater_id,
+                                           placeholder='17 bytes hex').classes('w-full')
+                    wh_cap_input = ui.number('Tank Capacity (L)', value=settings.echonet.water_heater_tank_capacity,
+                                             step=10).classes('w-full')
+                    wh_power_input = ui.number('Heating Power (W)', value=settings.echonet.water_heater_power_w,
+                                               step=100).classes('w-full')
+
                 # Smart Meter
                 with ui.card().classes('w-full p-4'):
                     ui.label('Smart Meter (0x028801)').classes('text-lg font-bold mb-2')
@@ -94,6 +107,7 @@ def render():
             new_wifi_devs = []
             if chk_solar.value: new_wifi_devs.append('solar')
             if chk_battery.value: new_wifi_devs.append('battery')
+            if chk_wh.value: new_wifi_devs.append('water_heater')
             settings.echonet.wifi_devices = new_wifi_devs
             
             settings.echonet.maker_code = maker_input.value
@@ -101,6 +115,9 @@ def render():
             settings.echonet.solar_id = solar_id_input.value
             settings.echonet.battery_id = bat_id_input.value
             settings.echonet.battery_rated_capacity_wh = float(bat_cap_input.value or 0)
+            settings.echonet.water_heater_id = wh_id_input.value
+            settings.echonet.water_heater_tank_capacity = int(wh_cap_input.value or 0)
+            settings.echonet.water_heater_power_w = float(wh_power_input.value or 0)
             settings.echonet.smart_meter_id = sm_id_input.value
             
             settings.save_to_yaml()

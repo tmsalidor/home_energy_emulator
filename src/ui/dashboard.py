@@ -16,6 +16,7 @@ def render():
             lbl_grid = ui.label().classes('text-lg')
             lbl_solar = ui.label().classes('text-lg')
             lbl_battery = ui.label().classes('text-lg')
+            lbl_wh = ui.label().classes('text-lg')
             
             # Application Version
             ui.separator().classes('my-2')
@@ -24,73 +25,115 @@ def render():
     # Debug Controls
     with ui.row().classes('w-full justify-center mt-8'):
         with ui.card().classes('p-4'):
-             ui.label('Debug Controls').classes('font-bold')
-             
-             # Scenario Control
-             scenario_sw = ui.switch('Scenario Active', value=True, 
-                                   on_change=lambda e: setattr(engine, 'use_scenario', e.value))
-             
-             def manual_override():
-                 if is_updating_ui: return
-                 engine.use_scenario = False
-                 scenario_sw.set_value(False)
+            ui.label('Debug Controls').classes('font-bold')
+            
+            # Scenario Control
+            scenario_sw = ui.switch('Scenario Active', value=True, 
+                                  on_change=lambda e: setattr(engine, 'use_scenario', e.value))
+            
+            def manual_override():
+                if is_updating_ui: return
+                engine.use_scenario = False
+                scenario_sw.set_value(False)
 
-             ui.number('Load (W)', value=500, step=100, 
-                       on_change=lambda e: (manual_override(), setattr(engine, 'current_load_w', float(e.value or 0)))).classes('hidden')
+            ui.number('Load (W)', value=500, step=100, 
+                      on_change=lambda e: (manual_override(), setattr(engine, 'current_load_w', float(e.value or 0)))).classes('hidden')
                  
-             # --- Manual Sliders ---
-             
-             # 1. Load Control
-             with ui.row().classes('w-full items-center'):
-                 ui.label('Load:').classes('w-20 font-bold')
-                 sl_load = ui.slider(min=0, max=2000, step=10, value=500,
-                                     on_change=lambda e: (manual_override(), setattr(engine, 'current_load_w', float(e.value)))
-                                    ).classes('flex-grow')
-                 ui.label().bind_text_from(sl_load, 'value', backward=lambda v: f"{v:.2f} W").classes('w-20 text-right')
+            # --- Manual Sliders (Grouped by Class) ---
+            
+            with ui.row().classes('w-full items-start wrap gap-4'):
+                
+                # 1. Load Control
+                with ui.card().classes('w-96 p-4'):
+                    ui.label('Load').classes('text-lg font-bold mb-2')
+                    with ui.row().classes('w-full items-center'):
+                        ui.label('Power:').classes('w-20 font-bold')
+                        sl_load = ui.slider(min=0, max=2000, step=10, value=500,
+                                            on_change=lambda e: (manual_override(), setattr(engine, 'current_load_w', float(e.value)))
+                                           ).classes('flex-grow')
+                        ui.label().bind_text_from(sl_load, 'value', backward=lambda v: f"{v:.2f} W").classes('w-20 text-right')
 
-             # 2. Solar Control
-             with ui.row().classes('w-full items-center mt-2'):
-                 ui.label('Solar:').classes('w-20 font-bold')
-                 sl_solar = ui.slider(min=0, max=5000, step=10, value=0,
-                                      on_change=lambda e: (manual_override(), setattr(engine.solar, 'instant_generation_power', float(e.value)))
-                                     ).classes('flex-grow')
-                 ui.label().bind_text_from(sl_solar, 'value', backward=lambda v: f"{v:.2f} W").classes('w-20 text-right')
+                # 2. Solar Control
+                with ui.card().classes('w-96 p-4'):
+                    ui.label('Solar').classes('text-lg font-bold mb-2')
+                    with ui.row().classes('w-full items-center'):
+                        ui.label('Gen:').classes('w-20 font-bold')
+                        sl_solar = ui.slider(min=0, max=5000, step=10, value=0,
+                                             on_change=lambda e: (manual_override(), setattr(engine.solar, 'instant_generation_power', float(e.value)))
+                                            ).classes('flex-grow')
+                        ui.label().bind_text_from(sl_solar, 'value', backward=lambda v: f"{v:.2f} W").classes('w-20 text-right')
 
-             # 3. Battery Control
-             with ui.row().classes('w-full items-center mt-2'):
-                 ui.label('Battery:').classes('w-20 font-bold')
-                 
-                 def update_battery(e):
-                     if is_updating_ui: return
-                     manual_override()
-                     val = e.value
-                     bat = engine.battery
-                     if val > 0:
-                         bat.is_charging = True
-                         bat.is_discharging = False
-                         bat.instant_charge_power = float(val)
-                         bat.instant_discharge_power = 0.0
-                     elif val < 0:
-                         bat.is_charging = False
-                         bat.is_discharging = True
-                         bat.instant_charge_power = 0.0
-                         bat.instant_discharge_power = abs(float(val))
-                     else:
-                         bat.is_charging = False
-                         bat.is_discharging = False
-                         bat.instant_charge_power = 0.0
-                         bat.instant_discharge_power = 0.0
+                # 3. Battery Control
+                with ui.card().classes('w-96 p-4'):
+                    ui.label('Battery').classes('text-lg font-bold mb-2')
+                    
+                    # SOC Control
+                    with ui.row().classes('w-full items-center mb-2'):
+                        ui.label('SOC:').classes('w-20 font-bold')
+                        sl_soc = ui.slider(min=0, max=100, step=0.1, value=50, 
+                                           on_change=lambda e: (manual_override(), setattr(engine.battery, 'soc', float(e.value)))
+                                          ).classes('flex-grow')
+                        ui.label().bind_text_from(sl_soc, 'value', backward=lambda v: f"{v:.1f} %").classes('w-20 text-right')
 
-                 sl_bat = ui.slider(min=-3000, max=3000, step=10, value=0, on_change=update_battery).classes('flex-grow')
-                 ui.label().bind_text_from(sl_bat, 'value', backward=lambda v: f"{v:.2f} W").classes('w-20 text-right')
+                    # Power Control
+                    with ui.row().classes('w-full items-center'):
+                        ui.label('Power:').classes('w-20 font-bold')
+                        def update_battery(e):
+                            if is_updating_ui: return
+                            manual_override()
+                            val = e.value
+                            bat = engine.battery
+                            if val > 0:
+                                bat.is_charging = True
+                                bat.is_discharging = False
+                                bat.instant_charge_power = float(val)
+                                bat.instant_discharge_power = 0.0
+                            elif val < 0:
+                                bat.is_charging = False
+                                bat.is_discharging = True
+                                bat.instant_charge_power = 0.0
+                                bat.instant_discharge_power = abs(float(val))
+                            else:
+                                bat.is_charging = False
+                                bat.is_discharging = False
+                                bat.instant_charge_power = 0.0
+                                bat.instant_discharge_power = 0.0
 
-             # 4. Battery SOC Control
-             with ui.row().classes('w-full items-center mt-2'):
-                 ui.label('SOC:').classes('w-20 font-bold')
-                 sl_soc = ui.slider(min=0, max=100, step=0.1, value=50, 
-                                    on_change=lambda e: (manual_override(), setattr(engine.battery, 'soc', float(e.value)))
-                                   ).classes('flex-grow')
-                 ui.label().bind_text_from(sl_soc, 'value', backward=lambda v: f"{v:.1f} %").classes('w-20 text-right')
+                        sl_bat = ui.slider(min=-3000, max=3000, step=10, value=0, on_change=update_battery).classes('flex-grow')
+                        ui.label().bind_text_from(sl_bat, 'value', backward=lambda v: f"{v:.2f} W").classes('w-20 text-right')
+
+                # 4. Water Heater Control
+                with ui.card().classes('w-96 p-4'):
+                    ui.label('Water Heater').classes('text-lg font-bold mb-2')
+                     
+                    # Remaining Hot Water
+                    with ui.row().classes('w-full items-center mb-2'):
+                        ui.label('Amount:').classes('w-20 font-bold')
+                        sl_wh = ui.slider(min=0, max=500, step=1, value=185,
+                                          on_change=lambda e: (manual_override(), setattr(engine.water_heater, 'remaining_hot_water', float(e.value)))
+                                         ).classes('flex-grow')
+                        ui.label().bind_text_from(sl_wh, 'value', backward=lambda v: f"{int(v)} L").classes('w-20 text-right')
+                     
+                    # Power Control
+                    with ui.row().classes('w-full items-center'):
+                        ui.label('Power:').classes('w-20 font-bold')
+                         
+                        def update_wh_power(e):
+                            if is_updating_ui: return
+                            manual_override()
+                            val = float(e.value)
+                            wh = engine.water_heater
+                            if val > 0:
+                                wh.is_heating = True
+                                wh.heating_power_w = val
+                                wh.auto_setting = 0x42 # Manual Start
+                            else:
+                                wh.is_heating = False
+                                wh.heating_power_w = 0.0
+                                wh.auto_setting = 0x43 # Manual Stop
+
+                        sl_wh_power = ui.slider(min=0, max=3000, step=100, value=0, on_change=update_wh_power).classes('flex-grow')
+                        ui.label().bind_text_from(sl_wh_power, 'value', backward=lambda v: f"{int(v)} W").classes('w-20 text-right')
 
 
     def update_ui():
@@ -134,6 +177,22 @@ def render():
             
             # Battery SOC
             sl_soc.value = bat.soc
+
+            # Water Heater
+            wh = engine.water_heater
+            state_wh = "Stopped"
+            if wh.is_heating: state_wh = "Heating"
+            lbl_wh.set_text(f"Water Heater: {int(wh.remaining_hot_water)}L ({state_wh})")
+            
+            sl_wh.value = wh.remaining_hot_water
+            # Update max if tank capacity changes
+            sl_wh.props(f'max={wh.tank_capacity}')
+            
+            # Water Heater Power
+            if wh.is_heating:
+                sl_wh_power.value = wh.heating_power_w
+            else:
+                sl_wh_power.value = 0.0
         finally:
             is_updating_ui = False
         
