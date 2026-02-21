@@ -1,7 +1,7 @@
 # Home Energy Emulator with ECHONET Lite
 
 ECHONET Liteプロトコルに対応したHEMS (Home Energy Management System) 対応機器エミュレーターです。
-スマートメーター (Bルート対応)、太陽光発電システム、蓄電池システムをエミュレートし、NiceGUIによるWebインターフェースで状態監視・操作が可能です。
+スマートメーター (Bルート対応)、太陽光発電システム、蓄電池システム、**電気給湯器**をエミュレートし、NiceGUIによるWebインターフェースで状態監視・操作が可能です。
 
 ## 特徴
 - **ハイブリッド通信エミュレーション**:
@@ -14,7 +14,8 @@ ECHONET Liteプロトコルに対応したHEMS (Home Energy Management System) �
 - **ECHONET Liteプロパティ対応**:
     - **スマートメーター**: 瞬時電力 (0xE7)、積算電力量 (0xE0, 0xE3) など。
     - **太陽光発電**: 瞬時発電電力 (0xE0)、積算発電量 (0xE1) など。
-    - **蓄電池**: SOC残量 (0xE4), 蓄電残量Wh (0xE2), 運転モード (0xDA), 充放電電力 (0xD3) など。
+    - **蓄電池**: SOC残量 (0xE4), 蓄電残量Wh (0xE2), 運転モード (0xDA), 充放電電力 (0xD3), 充放電可能電力量 (0xA4, 0xA5), 積算充放電量 (0xA8, 0xA9) など。
+    - **電気給湯器**: 運転状態 (0x80)、沸き上げ自動設定 (0xB0)、沸き上げ中状態 (0xB2)、残湯量 (0xE1)、タンク容量 (0xE2)、風呂自動モード設定 (0xE3 - Set/Get対応)、昼間沸き増し設定 (0xC0 - Set/Get対応)。
 
 ## 必要要件
 - **ハードウェア**:
@@ -45,7 +46,7 @@ ECHONET Liteプロトコルに対応したHEMS (Home Energy Management System) �
 
 3. **ビルドと起動**:
    ```bash
-   docker-compose up --build
+   docker compose up --build
    ```
 
 ### 3. Raspberry Pi等での常時稼働 (自動起動)
@@ -67,7 +68,7 @@ Raspberry PiなどのLinux端末で、電源投入時に自動的にエミュレ
 2. **バックグラウンド実行**:
    `-d` オプションを付けて起動します。
    ```bash
-   docker-compose up -d --build
+   docker compose up -d --build
    ```
 
    これで、ラズパイの電源を入れると自動的にコンテナが立ち上がり、エミュレーターが動作を開始します。
