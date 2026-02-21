@@ -434,7 +434,11 @@ class V2HAdapter(BaseAdapter):
             return struct.pack('B', max(0, min(val, 100)))
 
         elif epc == 0xC7:  # 車両接続・充放電可否状態
-            return b'\x43' if d.vehicle_connected else b'\x30'
+            if not d.vehicle_connected:
+                return b'\x30'  # 未接続
+            if d.operation_mode == 0x47:
+                return b'\x40'  # 接続、充放電不可
+            return b'\x43'  # 接続、充放電可
 
         elif epc == 0xD3:  # 瞬時充放電電力計測値 (W) 符号付き4バイト
             # 設定値ではなく、エンジンが計算した現在の「実測値」を返すように修正
