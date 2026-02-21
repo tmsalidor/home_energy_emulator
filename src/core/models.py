@@ -7,6 +7,7 @@ class DeviceType(str, Enum):
     SOLAR = "solar"
     BATTERY = "battery"
     ELECTRIC_WATER_HEATER = "electric_water_heater"
+    V2H = "v2h"
 
 class BaseDevice(BaseModel):
     device_id: str
@@ -91,3 +92,27 @@ class ElectricWaterHeater(BaseDevice):
     # 0x41: 昼間沸き増し許可, 0x42: 昼間沸き増し禁止
     c0_operation_status: int = 0x41
 
+
+class V2H(BaseDevice):
+    device_type: Literal[DeviceType.V2H] = DeviceType.V2H
+
+    # 車両接続状態 (0xC7)
+    # True=車両接続充放電可 (0x43), False=未接続 (0x30)
+    vehicle_connected: bool = False
+
+    # 運転モード設定 (0xDA)
+    # 0x42: 充電, 0x43: 放電, 0x44: 待機, 0x47: 停止
+    operation_mode: int = 0x47
+
+    # 車載電池放電可能残容量1 (0xC2) [Wh]
+    # 初期値は battery_capacity_wh の 50%（起動時に engine で設定）
+    remaining_capacity_wh: float = 25000.0
+
+    # 車載電池放電可能容量1 (0xC0) [Wh]（設定値）
+    battery_capacity_wh: float = 50000.0
+
+    # 充電電力設定値 (0xEB) [W]
+    charge_power_w: float = 3000.0
+
+    # 放電電力設定値 (0xEC) [W]
+    discharge_power_w: float = 3000.0

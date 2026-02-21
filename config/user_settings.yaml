@@ -11,6 +11,10 @@ echonet:
   node_profile_id: FE00000000000000000000000000000100
   smart_meter_id: FE00000000000000000000000000000000
   solar_id: FE00000000000000000000000000000200
+  v2h_battery_capacity_wh: 50000.0
+  v2h_charge_power_w: 3000.0
+  v2h_discharge_power_w: 3000.0
+  v2h_id: FE00000000000000000000000000000500
   water_heater_id: FE00000000000000000000000000000400
   water_heater_power_w: 1000.0
   water_heater_tank_capacity: 370
@@ -18,6 +22,7 @@ echonet:
   - solar
   - battery
   - water_heater
+  - v2h
 simulation:
   scenario_file: data/default_scenario.csv
   update_interval_sec: 1.0

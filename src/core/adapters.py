@@ -2,11 +2,12 @@ import struct
 from typing import Optional
 from src.config.settings import settings
 from .echonet import EchonetObjectInterface
-from .models import Solar, Battery, SmartMeter, ElectricWaterHeater
+from .models import Solar, Battery, SmartMeter, ElectricWaterHeater, V2H
 from src.core.smart_meter_consts import SMART_METER_STATIC_PROPS
 from src.core.solar_consts import SOLAR_STATIC_PROPS
 from src.core.battery_consts import BATTERY_STATIC_PROPS
 from src.core.water_heater_consts import WATER_HEATER_STATIC_PROPS
+from src.core.v2h_consts import V2H_STATIC_PROPS
 
 class BaseAdapter(EchonetObjectInterface):
     def __init__(self, config_id: str = None):
@@ -387,4 +388,130 @@ class ElectricWaterHeaterAdapter(BaseAdapter):
         elif epc == 0xC0: # Operation Status
              self.device.c0_operation_status = data[0]
              return True
+        return super().set_property(epc, data)
+
+
+class V2HAdapter(BaseAdapter):
+    """電気自動車充放電器 (V2H) クラ스コード 0x027E のアダプター"""
+
+    def __init__(self, device: V2H):
+        super().__init__(settings.echonet.v2h_id)
+        self.device = device
+
+    def _get_supported_epcs(self) -> list[int]:
+        base = super()._get_supported_epcs()
+        dynamic_epcs = [
+            0x80, 0x83, 0x8A,
+            0xC0, 0xC2, 0xC7,
+            0xD3,
+            0xDA, 0xE1,
+            0xEB, 0xEC,
+        ]
+        static_epcs = list(V2H_STATIC_PROPS.keys())
+        return sorted(list(set(base + dynamic_epcs + static_epcs)))
+
+    def get_property(self, epc: int) -> Optional[bytes]:
+        d = self.device
+        import logging
+        logger = logging.getLogger(__name__)
+
+        # --- 動的プロパティ ---
+        if epc == 0x80:  # 動作状態
+            return b'\x30' if d.is_running else b'\x31'
+
+        elif epc == 0xC0:  # 車載電池放電可能容量1 (Wh)
+            val = int(d.battery_capacity_wh)
+            return struct.pack('>L', max(0, min(val, 0xFFFFFFFF)))
+
+        elif epc == 0xC2:  # 車載電池放電可能残容量1 (Wh)
+            val = int(d.remaining_capacity_wh)
+            return struct.pack('>L', max(0, min(val, 0xFFFFFFFF)))
+
+        elif epc == 0xC7:  # 車両接続・充放電可否状態
+            return b'\x43' if d.vehicle_connected else b'\x30'
+
+        elif epc == 0xD3:  # 瞬時充放電電力計測値 (W) 符号付き4バイト
+            if d.operation_mode == 0x42:  # 充電
+                val = int(d.charge_power_w)
+            elif d.operation_mode == 0x43:  # 放電
+                val = -int(d.discharge_power_w)
+            else:
+                val = 0
+            return struct.pack('>i', val)
+
+        elif epc == 0xDA:  # 運転モード設定
+            if not d.vehicle_connected:
+                return b'\x47'  # 未接続時は常に停止
+            return bytes([d.operation_mode])
+
+        elif epc == 0xE1:  # 運転動作状態（運転モード設定に連動）
+            return bytes([d.operation_mode])
+
+        elif epc == 0xEB:  # 充電電力設定値 (W)
+            val = int(d.charge_power_w)
+            return struct.pack('>L', max(0, min(val, 0xFFFFFFFF)))
+
+        elif epc == 0xEC:  # 放電電力設定値 (W)
+            val = int(d.discharge_power_w)
+            return struct.pack('>L', max(0, min(val, 0xFFFFFFFF)))
+
+        # --- Settings 経由プロパティ ---
+        if epc == 0x8A or epc == 0x83:
+            return super().get_property(epc)
+
+        # --- 静的プロパティ ---
+        if epc in V2H_STATIC_PROPS:
+            return V2H_STATIC_PROPS[epc]
+
+        return super().get_property(epc)
+
+    def set_property(self, epc: int, data: bytes) -> bool:
+        d = self.device
+        import logging
+        logger = logging.getLogger(__name__)
+
+        if epc == 0x80:  # 動作状態
+            if data == b'\x30':
+                d.is_running = True
+            elif data == b'\x31':
+                d.is_running = False
+            return True
+
+        elif epc == 0xCD:  # 車両接続確認（トグル）
+            if not d.vehicle_connected:
+                # 未接続 -> 接続
+                d.vehicle_connected = True
+                d.operation_mode = 0x44  # 待機
+                logger.info("V2H: Vehicle connected. Mode -> Standby (0x44)")
+            else:
+                # 接続 -> 切断
+                d.vehicle_connected = False
+                d.operation_mode = 0x47  # 停止
+                logger.info("V2H: Vehicle disconnected. Mode -> Stop (0x47)")
+            return True
+
+        elif epc == 0xDA:  # 運転モード設定
+            if not d.vehicle_connected:
+                logger.warning("V2H: SET 0xDA rejected (vehicle not connected)")
+                return False  # 未接続時は失敗
+            val = data[0] if data else 0
+            if val not in (0x42, 0x43, 0x44):  # 充電/放電/待機のみ許可
+                logger.warning(f"V2H: SET 0xDA rejected (invalid value: 0x{val:02X})")
+                return False
+            d.operation_mode = val
+            logger.info(f"V2H: Operation mode set to 0x{val:02X}")
+            return True
+
+        elif epc == 0xEB:  # 充電電力設定値 (W)
+            if len(data) >= 4:
+                val = struct.unpack('>L', data[:4])[0]
+                d.charge_power_w = float(val)
+            return True
+
+        elif epc == 0xEC:  # 放電電力設定値 (W)
+            if len(data) >= 4:
+                val = struct.unpack('>L', data[:4])[0]
+                d.discharge_power_w = float(val)
+            return True
+
         return super().set_property(epc, data)

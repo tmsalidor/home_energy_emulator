@@ -1,6 +1,6 @@
 import time
 import logging
-from .models import SmartMeter, Solar, Battery, DeviceType, ElectricWaterHeater
+from .models import SmartMeter, Solar, Battery, DeviceType, ElectricWaterHeater, V2H
 
 logger = logging.getLogger(__name__)
 
@@ -15,6 +15,7 @@ class SimulationEngine:
         self.solar = Solar(device_id="sol_01")
         self.battery = Battery(device_id="bat_01")
         self.water_heater = ElectricWaterHeater(device_id="wh_01")
+        self.v2h = V2H(device_id="v2h_01")
         
         # Simulation State
         self.current_load_w: float = 500.0  # Base household load
@@ -54,6 +55,20 @@ class SimulationEngine:
         # 2. Remaining Hot Water = Half of Tank Capacity (User Request)
         self.water_heater.remaining_hot_water = float(self.water_heater.tank_capacity) / 2.0
         logger.info(f"Water Heater Remaining Hot Water initialized to half capacity: {self.water_heater.remaining_hot_water}L")
+
+        # Initialize V2H Properties from Settings
+        try:
+            from src.config.settings import settings
+            self.v2h.battery_capacity_wh = settings.echonet.v2h_battery_capacity_wh
+            self.v2h.charge_power_w = settings.echonet.v2h_charge_power_w
+            self.v2h.discharge_power_w = settings.echonet.v2h_discharge_power_w
+            # 初期残容量 = 車載電池放電可能容量の50%
+            self.v2h.remaining_capacity_wh = self.v2h.battery_capacity_wh * 0.5
+            logger.info(f"V2H configured: Cap={self.v2h.battery_capacity_wh}Wh, "
+                        f"Remain={self.v2h.remaining_capacity_wh}Wh, "
+                        f"ChargePow={self.v2h.charge_power_w}W, DischargePow={self.v2h.discharge_power_w}W")
+        except Exception as e:
+            logger.error(f"Failed to load V2H settings: {e}")
 
         logger.info("Simulation Engine Initialized")
 
@@ -153,6 +168,9 @@ class SimulationEngine:
         
         # 1.5 Update Water Heater State
         self._update_water_heater(dt)
+
+        # 1.7 Update V2H State
+        self._update_v2h(dt)
         
         # 2. Update Grid Power (Power Balance Formula)
         # Formula: P_grid = (P_load + P_charge) - (P_solar + P_discharge)
@@ -261,6 +279,51 @@ class SimulationEngine:
         # Upper bound is tank capacity (handled above for heating, but clamp generally)
         if wh.remaining_hot_water > wh.tank_capacity:
             wh.remaining_hot_water = float(wh.tank_capacity)
+
+    def _update_v2h(self, dt: float):
+        """
+        V2H (電気自動車充放電器) のシミュレーションロジック
+        充電: 残容量を充電電力で増加 + Loadに充電電力を加算
+        放電: Loadが50Wを超えている分を放電してLoadを削減
+        """
+        v2h = self.v2h
+        if not v2h.is_running or not v2h.vehicle_connected:
+            return
+
+        mode = v2h.operation_mode
+
+        if mode == 0x42:  # 充電
+            # Load に充電電力分を加算（グリッドから引く）
+            charge_wh = v2h.charge_power_w * (dt / 3600.0)
+            self.current_load_w += v2h.charge_power_w
+            v2h.remaining_capacity_wh += charge_wh
+
+            # 満充電チェック
+            if v2h.remaining_capacity_wh >= v2h.battery_capacity_wh:
+                v2h.remaining_capacity_wh = v2h.battery_capacity_wh
+                v2h.operation_mode = 0x44  # 待機
+                logger.info("V2H: Fully charged. Mode -> Standby (0x44)")
+
+        elif mode == 0x43:  # 放電
+            # Loadが50Wを超えている分を計算
+            over_50 = self.current_load_w - 50.0
+            if over_50 > 0:
+                # 放電量 = min(超過分, 放電電力設定値)
+                discharge_w = min(over_50, v2h.discharge_power_w)
+                discharge_wh = discharge_w * (dt / 3600.0)
+
+                # Loadから放電分を削減（最低0W）
+                self.current_load_w = max(0.0, self.current_load_w - discharge_w)
+                v2h.remaining_capacity_wh -= discharge_wh
+
+                # 残量枯渇チェック
+                if v2h.remaining_capacity_wh <= 0:
+                    v2h.remaining_capacity_wh = 0.0
+                    v2h.operation_mode = 0x44  # 待機
+                    logger.info("V2H: Battery empty. Mode -> Standby (0x44)")
+
+        # 残容量クランプ
+        v2h.remaining_capacity_wh = max(0.0, min(v2h.remaining_capacity_wh, v2h.battery_capacity_wh))
 
 
 # Global Singleton
