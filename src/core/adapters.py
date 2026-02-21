@@ -403,9 +403,8 @@ class V2HAdapter(BaseAdapter):
         dynamic_epcs = [
             0x80, 0x83, 0x8A,
             0xC0, 0xC2, 0xC7,
-            0xD3,
-            0xDA, 0xE1,
-            0xEB, 0xEC,
+            0xD0, 0xD3, 0xDA,
+            0xE1, 0xE2, 0xE4, 0xEB, 0xEC,
         ]
         static_epcs = list(V2H_STATIC_PROPS.keys())
         return sorted(list(set(base + dynamic_epcs + static_epcs)))
