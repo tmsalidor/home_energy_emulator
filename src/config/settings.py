@@ -31,8 +31,8 @@ class EchonetSettings(BaseModel):
     
     # Device Specific Defaults
     battery_rated_capacity_wh: float = 10000.0
-    water_heater_tank_capacity: int = 370
-    water_heater_power_w: float = 1000.0
+    water_heater_tank_capacity: int = 500
+    water_heater_power_w: float = 1200.0
     # V2H (Electric Vehicle Charger/Discharger 0x027E)
     v2h_id: str = "FE00000000000000000000000000000500"
     v2h_battery_capacity_wh: float = 50000.0

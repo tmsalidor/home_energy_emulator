@@ -16,8 +16,8 @@ echonet:
   v2h_discharge_power_w: 3000.0
   v2h_id: FE00000000000000000000000000000500
   water_heater_id: FE00000000000000000000000000000400
-  water_heater_power_w: 1000.0
-  water_heater_tank_capacity: 370
+  water_heater_power_w: 1200.0
+  water_heater_tank_capacity: 500
   wifi_devices:
   - solar
   - battery
