@@ -403,7 +403,7 @@ class V2HAdapter(BaseAdapter):
         dynamic_epcs = [
             0x80, 0x83, 0x8A,
             0xC0, 0xC2, 0xC7,
-            0xD0, 0xD3, 0xDA,
+            0xD0, 0xD3, 0xD6, 0xD8, 0xDA,
             0xE1, 0xE2, 0xE4, 0xEB, 0xEC,
         ]
         static_epcs = list(V2H_STATIC_PROPS.keys())
@@ -445,6 +445,14 @@ class V2HAdapter(BaseAdapter):
             else:
                 val = 0
             return struct.pack('>i', val)
+
+        elif epc == 0xD8:  # 積算充電電力量1 (Wh) 4バイト
+            val = int(d.cumulative_charge_wh)
+            return struct.pack('>L', max(0, min(val, 0xFFFFFFFF)))
+
+        elif epc == 0xD6:  # 積算放電電力量1 (Wh) 4バイト
+            val = int(d.cumulative_discharge_wh)
+            return struct.pack('>L', max(0, min(val, 0xFFFFFFFF)))
 
         elif epc == 0xDA:  # 運転モード設定
             if not d.vehicle_connected:

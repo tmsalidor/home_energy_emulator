@@ -306,6 +306,7 @@ class SimulationEngine:
             charge_wh = v2h.charge_power_w * (dt / 3600.0)
             v2h.current_charge_w = v2h.charge_power_w
             v2h.remaining_capacity_wh += charge_wh
+            v2h.cumulative_charge_wh += charge_wh  # 積算充電電力量を更新
 
             # 満充電Check
             if v2h.remaining_capacity_wh >= v2h.battery_capacity_wh:
@@ -335,6 +336,7 @@ class SimulationEngine:
 
                 v2h.current_discharge_w = discharge_w
                 v2h.remaining_capacity_wh -= discharge_wh
+                v2h.cumulative_discharge_wh += discharge_wh  # 積算放電電力量を更新
 
                 # 残量枯源Check
                 if v2h.remaining_capacity_wh <= 0:

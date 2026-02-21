@@ -111,6 +111,10 @@ class V2H(BaseDevice):
     # 車載電池放電可能容量1 (0xC0) [Wh]（設定値）
     battery_capacity_wh: float = 50000.0
 
+    # 積算電力量 (Wh) - 内部管理用 (ECHONET Lite 0xD8, 0xD6 対応)
+    cumulative_charge_wh: float = 0.0
+    cumulative_discharge_wh: float = 0.0
+
     # 充電電力設定値 (0xEB) [W]
     charge_power_w: float = 3000.0
 
