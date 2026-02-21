@@ -419,13 +419,17 @@ class V2HAdapter(BaseAdapter):
         if epc == 0x80:  # 動作状態
             return b'\x30' if d.is_running else b'\x31'
 
-        elif epc == 0xC0:  # 車載電池放電可能容量1 (Wh)
+        elif epc == 0xC0 or epc == 0xD0:  # 車載電池放電可能容量1 (Wh) or 車載電池の使用容量値 1
             val = int(d.battery_capacity_wh)
             return struct.pack('>L', max(0, min(val, 0xFFFFFFFF)))
 
-        elif epc == 0xC2:  # 車載電池放電可能残容量1 (Wh)
+        elif epc == 0xC2 or epc == 0xE2:  # 車載電池放電可能残容量1 (Wh) or 車載電池の電池残容量 1
             val = int(d.remaining_capacity_wh)
             return struct.pack('>L', max(0, min(val, 0xFFFFFFFF)))
+
+        elif epc == 0xE4:  # 車載電池の電池残容量 2
+            val = int(d.remaining_capacity_wh) / int(d.battery_capacity_wh)
+            return bytes(val)
 
         elif epc == 0xC7:  # 車両接続・充放電可否状態
             return b'\x43' if d.vehicle_connected else b'\x30'
