@@ -436,8 +436,6 @@ class V2HAdapter(BaseAdapter):
         elif epc == 0xC7:  # 車両接続・充放電可否状態
             if not d.vehicle_connected:
                 return b'\x30'  # 未接続
-            if d.operation_mode == 0x47:
-                return b'\x40'  # 接続、充放電不可
             return b'\x43'  # 接続、充放電可
 
         elif epc == 0xD3:  # 瞬時充放電電力計測値 (W) 符号付き4バイト
@@ -514,6 +512,8 @@ class V2HAdapter(BaseAdapter):
                 return False
             d.operation_mode = val
             logger.info(f"V2H: Operation mode set to 0x{val:02X}")
+            if val == 0x47:  # 停止
+                d.vehicle_connected = False # 未接続
             return True
 
         elif epc == 0xEB:  # 充電電力設定値 (W)
