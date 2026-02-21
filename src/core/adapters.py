@@ -431,10 +431,11 @@ class V2HAdapter(BaseAdapter):
             return b'\x43' if d.vehicle_connected else b'\x30'
 
         elif epc == 0xD3:  # 瞬時充放電電力計測値 (W) 符号付き4バイト
+            # 設定値ではなく、エンジンが計算した現在の「実測値」を返すように修正
             if d.operation_mode == 0x42:  # 充電
-                val = int(d.charge_power_w)
+                val = int(d.current_charge_w)
             elif d.operation_mode == 0x43:  # 放電
-                val = -int(d.discharge_power_w)
+                val = -int(d.current_discharge_w)
             else:
                 val = 0
             return struct.pack('>i', val)
