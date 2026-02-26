@@ -4,7 +4,7 @@ import socket
 import struct
 from src.config.settings import settings
 from src.core.echonet import wifi_echonet_ctrl, wisun_echonet_ctrl
-from src.core.adapters import SolarAdapter, BatteryAdapter, NodeProfileAdapter, SmartMeterAdapter, ElectricWaterHeaterAdapter, V2HAdapter
+from src.core.adapters import SolarAdapter, BatteryAdapter, NodeProfileAdapter, SmartMeterAdapter, ElectricWaterHeaterAdapter, V2HAdapter, AirConditionerAdapter
 from src.core.wisun import wisun_manager
 from src.core.engine import engine
 
@@ -43,7 +43,10 @@ async def start_echonet_service():
 
     if 'v2h' in enabled_devs:
         wifi_instances.append((0x02, 0x7E, 0x01))
-        
+
+    if 'air_conditioner' in enabled_devs:
+        wifi_instances.append((0x01, 0x30, 0x01))
+
     wifi_echonet_ctrl.register_instance(0x0E, 0xF0, 0x01, NodeProfileAdapter(wifi_instances))
     
     if 'solar' in enabled_devs:
@@ -57,6 +60,9 @@ async def start_echonet_service():
 
     if 'v2h' in enabled_devs:
         wifi_echonet_ctrl.register_instance(0x02, 0x7E, 0x01, V2HAdapter(engine.v2h))
+
+    if 'air_conditioner' in enabled_devs:
+        wifi_echonet_ctrl.register_instance(0x01, 0x30, 0x01, AirConditionerAdapter(engine.air_conditioner))
     
     # --- 2. Wi-SUN Controller Setup (Smart Meter) ---
     # Node Profile for Wi-SUN: Smart Meter(0288)

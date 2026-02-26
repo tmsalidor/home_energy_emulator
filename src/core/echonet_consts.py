@@ -245,6 +245,28 @@ CLASS_EPCS = {
         0xEF: "Rated voltage (in independent status)",
     },
 
+    # Home Air Conditioner (0x0130)
+    (0x01, 0x30): {
+        0xA0: "Air flow rate setting",
+        0xA1: "Automatic control of air flow direction setting",
+        0xA3: "Automatic swing of air flow setting",
+        0xAA: "Special state ",
+        0xB0: "Operation mode setting",
+        0xB3: "Set temperature value",
+        0xB4: "Set value of relative humidity in dehumidifying mode",
+        0xB5: "Set temperature value (cooling)",
+        0xB6: "Set temperature value (heating)",
+        0xB7: "Set temperature value (dehumidification)",
+        0xB8: "Rated power consumption",
+        0xB9: "Measured value of current consumption",
+        0xBA: "Measured value of room humidity",
+        0xBB: "Measured value of room temperature",
+        0xBC: "Set temperature value of user remote control",
+        0xBD: "Measured cooled air temperature",
+        0xBE: "Measured outdoor air temperature",
+        0xBF: "Relative temperature setting",
+    },
+
     # Smart Meter (0x0288)
     (0x02, 0x88): {
         0xC0: "Route B Identification number",
@@ -286,6 +308,7 @@ def get_epc_name(class_group: int, class_code: int, epc: int) -> str:
 
 # ECHONET Lite Class Name Mapping
 CLASS_NAMES = {
+    (0x01, 0x30): "Home Air Conditioner",
     (0x02, 0x6B): "Water Heater",
     (0x02, 0x79): "Solar Power Generation",
     (0x02, 0x7D): "Storage Battery",

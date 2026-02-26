@@ -2,12 +2,13 @@ import struct
 from typing import Optional
 from src.config.settings import settings
 from .echonet import EchonetObjectInterface
-from .models import Solar, Battery, SmartMeter, ElectricWaterHeater, V2H
+from .models import Solar, Battery, SmartMeter, ElectricWaterHeater, V2H, AirConditioner
 from src.core.smart_meter_consts import SMART_METER_STATIC_PROPS
 from src.core.solar_consts import SOLAR_STATIC_PROPS
 from src.core.battery_consts import BATTERY_STATIC_PROPS
 from src.core.water_heater_consts import WATER_HEATER_STATIC_PROPS
 from src.core.v2h_consts import V2H_STATIC_PROPS
+from src.core.aircon_consts import AIRCON_STATIC_PROPS
 
 class BaseAdapter(EchonetObjectInterface):
     def __init__(self, config_id: str = None):
@@ -528,4 +529,73 @@ class V2HAdapter(BaseAdapter):
                 d.discharge_power_w = float(val)
             return True
 
+        return super().set_property(epc, data)
+
+
+class AirConditionerAdapter(BaseAdapter):
+    """家庭用エアコン (0x0130) アダプター"""
+
+    def __init__(self, device: AirConditioner):
+        super().__init__(settings.echonet.ac_id)
+        self.device = device
+
+    def _get_supported_epcs(self) -> list[int]:
+        base = super()._get_supported_epcs()
+        dynamic_epcs = [0x80, 0x84, 0x85, 0x8F, 0xA0, 0xB0, 0xB3]
+        static_epcs = list(AIRCON_STATIC_PROPS.keys())
+        return sorted(list(set(base + dynamic_epcs + static_epcs)))
+
+    def get_property(self, epc: int) -> Optional[bytes]:
+        d = self.device
+
+        # Settings 優先プロパティ (0x8A: Maker Code, 0x83: Identification Number)
+        if epc in (0x8A, 0x83):
+            return super().get_property(epc)
+
+        # 動的プロパティ
+        if epc == 0x80:  # 動作状態
+            return b'\x30' if d.is_running else b'\x31'
+        elif epc == 0x84:  # 瞬時消費電力計測値 (2 bytes unsigned, W)
+            return struct.pack(">H", min(int(d.instant_power_w), 65533))
+        elif epc == 0x85:  # 積算消費電力量計測値 (4 bytes unsigned, 0.001 kWh単位 = Wh)
+            return struct.pack(">L", min(int(d.cumulative_power_wh), 0xFFFFFFFE))
+        elif epc == 0x8F:  # 節電動作設定
+            return bytes([d.power_saving_mode])
+        elif epc == 0xA0:  # 風量設定
+            return bytes([d.air_flow_volume])
+        elif epc == 0xB0:  # 運転モード設定
+            return bytes([d.operation_mode])
+        elif epc == 0xB3:  # 温度設定値
+            return bytes([d.temperature_setting])
+
+        # 静的プロパティ
+        if epc in AIRCON_STATIC_PROPS:
+            return AIRCON_STATIC_PROPS[epc]
+
+        return super().get_property(epc)
+
+    def set_property(self, epc: int, data: bytes) -> bool:
+        d = self.device
+        if epc == 0x80:  # 動作状態
+            if data == b'\x30':
+                d.is_running = True
+            elif data == b'\x31':
+                d.is_running = False
+            return True
+        elif epc == 0x8F:  # 節電動作設定
+            if data and data[0] in (0x41, 0x42):
+                d.power_saving_mode = data[0]
+                return True
+        elif epc == 0xB0:  # 運転モード設定
+            if data and data[0] in (0x40, 0x41, 0x42, 0x43, 0x44, 0x45):
+                d.operation_mode = data[0]
+                return True
+        elif epc == 0xB3:  # 温度設定値
+            if data:
+                d.temperature_setting = data[0]
+                return True
+        elif epc == 0xA0:  # 風量設定
+            if data:
+                d.air_flow_volume = data[0]
+                return True
         return super().set_property(epc, data)

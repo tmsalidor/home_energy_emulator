@@ -1,6 +1,6 @@
 import time
 import logging
-from .models import SmartMeter, Solar, Battery, DeviceType, ElectricWaterHeater, V2H
+from .models import SmartMeter, Solar, Battery, DeviceType, ElectricWaterHeater, V2H, AirConditioner
 
 logger = logging.getLogger(__name__)
 
@@ -16,6 +16,7 @@ class SimulationEngine:
         self.battery = Battery(device_id="bat_01")
         self.water_heater = ElectricWaterHeater(device_id="wh_01")
         self.v2h = V2H(device_id="v2h_01")
+        self.air_conditioner = AirConditioner(device_id="ac_01")
         
         # Simulation State
         self.current_load_w: float = 500.0  # Base household load
@@ -165,24 +166,27 @@ class SimulationEngine:
         
         # 1. Update Battery State (SOC Logic)
         self._update_battery(dt)
-        
+
         # 1.5 Update Water Heater State
         self._update_water_heater(dt)
 
         # 1.7 Update V2H State
         self._update_v2h(dt)
-        
+
+        # 1.9 Update Air Conditioner State
+        self._update_aircon(dt)
+
         # 2. Update Grid Power (Power Balance Formula)
         # Formula: P_grid = (P_load + P_charge) - (P_solar + P_discharge)
-        
+
         p_load = self.current_load_w
         p_charge = self.battery.instant_charge_power if self.battery.is_charging else 0.0
         p_discharge = self.battery.instant_discharge_power if self.battery.is_discharging else 0.0
         p_solar = self.solar.instant_generation_power
-        
+
         # Guard: Solar power cannot be negative
         if p_solar < 0: p_solar = 0
-        
+
         # Water Heater Load
         p_wh = self.water_heater.heating_power_w if self.water_heater.is_heating else 0.0
 
@@ -190,7 +194,10 @@ class SimulationEngine:
         p_v2h_charge = self.v2h.current_charge_w
         p_v2h_discharge = self.v2h.current_discharge_w
 
-        p_grid = (p_load + p_charge + p_wh + p_v2h_charge) - (p_solar + p_discharge + p_v2h_discharge)
+        # Air Conditioner Load
+        p_ac = self.air_conditioner.instant_power_w
+
+        p_grid = (p_load + p_charge + p_wh + p_v2h_charge + p_ac) - (p_solar + p_discharge + p_v2h_discharge)
         
         self.smart_meter.instant_current_power = p_grid
         
@@ -347,6 +354,26 @@ class SimulationEngine:
 
         # 残容量クランプ
         v2h.remaining_capacity_wh = max(0.0, min(v2h.remaining_capacity_wh, v2h.battery_capacity_wh))
+
+    def _get_aircon_power(self) -> float:
+        """エアコンの現在の消費電力を返す"""
+        from src.config.settings import settings
+        ac = self.air_conditioner
+        if not ac.is_running:
+            return 0.0
+        mode = ac.operation_mode
+        if mode in (0x45, 0x40):  # 送風, その他
+            return 50.0
+        elif mode in (0x41, 0x42, 0x43, 0x44):  # 自動, 冷房, 暖房, 除湿
+            return float(settings.echonet.ac_power_w)
+        return 0.0
+
+    def _update_aircon(self, dt: float):
+        """エアコンの消費電力を更新し積算する"""
+        ac = self.air_conditioner
+        p = self._get_aircon_power()
+        ac.instant_power_w = p
+        ac.cumulative_power_wh += p * (dt / 3600.0)
 
 
 # Global Singleton

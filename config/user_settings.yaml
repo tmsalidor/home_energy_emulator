@@ -5,6 +5,8 @@ communication:
   wi_sun_channel: null
   wi_sun_device: /dev/ttyUSB0
 echonet:
+  ac_id: FE00000000000000000000000000000600
+  ac_power_w: 500.0
   battery_id: FE00000000000000000000000000000300
   battery_rated_capacity_wh: 10000.0
   maker_code: '000106'
@@ -23,6 +25,7 @@ echonet:
   - battery
   - water_heater
   - v2h
+  - air_conditioner
 simulation:
   scenario_file: data/default_scenario.csv
   update_interval_sec: 1.0
