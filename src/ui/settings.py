@@ -26,39 +26,17 @@ def render():
             with ui.card().classes('w-96 p-4'):
                 ui.label('Wi-Fi Settings').classes('text-lg font-bold mb-2')
                 ui.label('Requires Restart').classes('text-xs text-red-500 mb-2')
-                ui.label('Select simulated devices (max 3 excluding Node Profile)').classes('text-xs text-gray-500 mb-2')
-                
                 # Checkboxes for devices
                 wifi_devs = settings.echonet.wifi_devices
-                
+
                 # Node Profile is always mandatory
                 ui.checkbox('Node Profile (0x0EF0)', value=True).props('disable').classes('w-full')
-                
+
                 chk_solar = ui.checkbox('Solar Power (0x0279)', value='solar' in wifi_devs).classes('w-full')
                 chk_battery = ui.checkbox('Storage Battery (0x027D)', value='battery' in wifi_devs).classes('w-full')
                 chk_wh = ui.checkbox('Elec. Water Heater (0x026B)', value='water_heater' in wifi_devs).classes('w-full')
                 chk_v2h = ui.checkbox('EV Charger/Discharger V2H (0x027E)', value='v2h' in wifi_devs).classes('w-full')
                 chk_ac = ui.checkbox('Air Conditioner (0x0130)', value='air_conditioner' in wifi_devs).classes('w-full')
-
-                # Logic to limit selection to 3 (currently only 2 options so logic is trivial but implemented for future)
-                def check_limit():
-                    selected = 0
-                    if chk_solar.value: selected += 1
-                    if chk_battery.value: selected += 1
-                    if chk_wh.value: selected += 1
-                    if chk_v2h.value: selected += 1
-                    if chk_ac.value: selected += 1
-
-                    if selected > 3:
-                        ui.notify('Maximum 3 devices allowed.', type='warning')
-                        # Revert the change (this is tricky inside the handler, might need better UX or just validation on save)
-                        # For now, with only 2 items, we are safe.
-
-                chk_solar.on_value_change(check_limit)
-                chk_battery.on_value_change(check_limit)
-                chk_wh.on_value_change(check_limit)
-                chk_v2h.on_value_change(check_limit)
-                chk_ac.on_value_change(check_limit)
 
             # 2. ECHONET Lite Property Settings
             with ui.column().classes('flex-1 min-w-[300px] gap-4'):
