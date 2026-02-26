@@ -38,6 +38,9 @@ class EchonetSettings(BaseModel):
     v2h_battery_capacity_wh: float = 50000.0
     v2h_charge_power_w: float = 3000.0
     v2h_discharge_power_w: float = 3000.0
+    # Air Conditioner (0x0130)
+    ac_id: str = "FE00000000000000000000000000000600"
+    ac_power_w: float = 500.0  # 自動/冷房/暖房/除湿 共通消費電力 (W)
 
 class SimulationSettings(BaseModel):
     update_interval_sec: float = 1.0

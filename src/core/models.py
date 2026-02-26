@@ -8,6 +8,7 @@ class DeviceType(str, Enum):
     BATTERY = "battery"
     ELECTRIC_WATER_HEATER = "electric_water_heater"
     V2H = "v2h"
+    AIR_CONDITIONER = "air_conditioner"
 
 class BaseDevice(BaseModel):
     device_id: str
@@ -91,6 +92,31 @@ class ElectricWaterHeater(BaseDevice):
     # 昼間沸き増し設定 (0xC0)
     # 0x41: 昼間沸き増し許可, 0x42: 昼間沸き増し禁止
     c0_operation_status: int = 0x41
+
+
+class AirConditioner(BaseDevice):
+    device_type: Literal[DeviceType.AIR_CONDITIONER] = DeviceType.AIR_CONDITIONER
+
+    # 運転モード設定 (0xB0)
+    # 0x40: その他, 0x41: 自動, 0x42: 冷房, 0x43: 暖房, 0x44: 除湿, 0x45: 送風
+    operation_mode: int = 0x43
+
+    # 温度設定値 (0xB3) [°C]
+    temperature_setting: int = 0x15  # 21°C
+
+    # 風量設定 (0xA0)
+    # 0x41: 自動, 0x31-0x38: 風量1-8
+    air_flow_volume: int = 0x41
+
+    # 節電動作設定 (0x8F)
+    # 0x41: 節電動作中, 0x42: 非節電動作中
+    power_saving_mode: int = 0x42
+
+    # 瞬時消費電力計測値 (0x84) [W] - エンジンで計算
+    instant_power_w: float = 0.0
+
+    # 積算消費電力量計測値 (0x85) [Wh] - エンジンで積算 (0.001 kWh単位 = 1 Wh)
+    cumulative_power_wh: float = 0.0
 
 
 class V2H(BaseDevice):

@@ -1,6 +1,7 @@
 from nicegui import ui
 from src.core.engine import engine
 from src.core.version import get_git_info
+from src.config.settings import settings
 
 def render():
     is_updating_ui = False
@@ -18,6 +19,7 @@ def render():
             lbl_battery = ui.label().classes('text-lg')
             lbl_wh = ui.label().classes('text-lg')
             lbl_v2h = ui.label().classes('text-lg')
+            lbl_ac = ui.label().classes('text-lg')
             
             # Application Version
             ui.separator().classes('my-2')
@@ -136,6 +138,17 @@ def render():
                         sl_wh_power = ui.slider(min=0, max=3000, step=100, value=0, on_change=update_wh_power).classes('flex-grow')
                         ui.label().bind_text_from(sl_wh_power, 'value', backward=lambda v: f"{int(v)} W").classes('w-20 text-right')
 
+                # 6. Air Conditioner Control
+                with ui.card().classes('w-96 p-4'):
+                    ui.label('Air Conditioner').classes('text-lg font-bold mb-2')
+
+                    with ui.row().classes('w-full items-center'):
+                        ui.label('Power:').classes('w-20 font-bold')
+                        sl_ac_power = ui.slider(min=0, max=3000, step=10, value=settings.echonet.ac_power_w,
+                                                on_change=lambda e: (manual_override(), setattr(settings.echonet, 'ac_power_w', float(e.value)))
+                                               ).classes('flex-grow')
+                        ui.label().bind_text_from(sl_ac_power, 'value', backward=lambda v: f"{int(v)} W").classes('w-20 text-right')
+
                 # 5. V2H Control
                 with ui.card().classes('w-96 p-4'):
                     ui.label('V2H (EV Charger/Discharger)').classes('text-lg font-bold mb-2')
@@ -238,6 +251,14 @@ def render():
             else:
                 v2h_soc_pct = 0.0
             lbl_v2h.set_text(f"V2H: {v2h_soc_pct:.1f}% ({v2h_conn}, {v2h_mode})")
+
+            # Air Conditioner
+            ac = engine.air_conditioner
+            ac_mode_names = {0x40: 'Other', 0x41: 'Auto', 0x42: 'Cool', 0x43: 'Heat', 0x44: 'Dehum', 0x45: 'Fan'}
+            ac_state = 'ON' if ac.is_running else 'OFF'
+            ac_mode = ac_mode_names.get(ac.operation_mode, f'0x{ac.operation_mode:02X}')
+            lbl_ac.set_text(f"AC: {ac.instant_power_w:.0f}W ({ac_state}, {ac_mode})")
+            sl_ac_power.value = settings.echonet.ac_power_w
 
             # V2H スライダー更新
             sl_v2h_soc.value = v2h_soc_pct
