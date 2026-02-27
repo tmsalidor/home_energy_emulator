@@ -10,7 +10,7 @@ ECHONET Liteプロパティに対応したHEMS (Home Energy Management System) �
 - **ハイブリッド通信エミュレーション**:
     - **スマートメーター**: Wi-SUN (Bルート) 経由でのプロパティ公開。実際のUSBドングル (BP35A1等) または仮想COMポートを通じてシリアル通信を行います。未接続時には無効化。
     - **その他デバイス**: Wi-Fi (LAN) 経由でのECHONET Liteプロパティ公開 (UDP/Multicast)。
-- **Web UI (NiceGUI)**:
+- **Web UI**:
     - **Dashboard**: 各デバイスの発電・充放電状態や消費電力のリアルタイム監視と、スライダーによる手動シミュレーション操作。
     - **Settings**: Web画面上でのID設定やパラメータ変更。
     - **Inspector**: ECHONET Liteプロパティの内部値をリアルタイムで確認できるデバッグ機能。
