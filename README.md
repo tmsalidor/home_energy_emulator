@@ -1,5 +1,8 @@
 # Home Energy Emulator with ECHONET Lite
 
+<img width="1253" height="1516" alt="image" src="https://github.com/user-attachments/assets/fe78bbae-866a-495b-b314-df96fc29452c" />
+
+
 ECHONET Liteプロパティに対応したHEMS (Home Energy Management System) 対応機器エミュレーターです。
 スマートメーター (Bルート対応)、太陽光発電システム、蓄電池システム、電気自動車充放電器 (V2H)、電気給湯器、家庭用エアコンをエミュレートし、NiceGUIによるWebインターフェースで状態監視・操作が可能です。
 
