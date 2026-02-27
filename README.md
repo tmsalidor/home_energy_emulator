@@ -8,7 +8,7 @@ ECHONET Liteプロパティに対応したHEMS (Home Energy Management System) �
 
 ## 特徴
 - **ハイブリッド通信エミュレーション**:
-    - **スマートメーター**: Wi-SUN (Bルート) 経由でのプロパティ公開。実際のUSBドングル (BP35A1等) または仮想COMポートを通じてシリアル通信を行います。
+    - **スマートメーター**: Wi-SUN (Bルート) 経由でのプロパティ公開。実際のUSBドングル (BP35A1等) または仮想COMポートを通じてシリアル通信を行います。未接続時には無効化。
     - **その他デバイス**: Wi-Fi (LAN) 経由でのECHONET Liteプロパティ公開 (UDP/Multicast)。
 - **Web UI (NiceGUI)**:
     - **Dashboard**: 各デバイスの発電・充放電状態や消費電力のリアルタイム監視と、スライダーによる手動シミュレーション操作。
@@ -24,8 +24,8 @@ ECHONET Liteプロパティに対応したHEMS (Home Energy Management System) �
     - **家庭用エアコン**: 運転状態 (0x80)、運転モード設定 (0xB0)、温度設定値 (0xB3)、風量設定 (0xA0)、節電動作設定 (0x8F)、瞬時消費電力計測値 (0x84)、積算消費電力量計測値 (0x85) など。
 
 ## 必要要件
-- **ハードウェア**:
-    - Wi-SUN USBドングル (ローム社製 BP35A1 等) - Bルート通信エミュレーション用
+- **ハードウェア環境**:
+    - Wi-SUN USBドングル (ローム社製 BP35A1 等) - Bルート通信エミュレーション用 
     - Raspberry Pi (3B+, 4B, 5 等) 推奨 - 常時稼働用サーバーとして適しています。
 - **ソフトウェア環境**:
     - **推奨**: Linux (Ubuntu, Raspberry Pi OS) - Docker (`network_mode: host`) がネイティブ動作するため、ECHONET Liteのマルチキャスト通信に最適です。
