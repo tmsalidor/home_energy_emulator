@@ -46,7 +46,7 @@ class EchonetSettings(BaseModel):
 
 class SimulationSettings(BaseModel):
     update_interval_sec: float = 1.0
-    scenario_file: str = "data/default_scenario.csv"
+    scenario_file: str = "data/scenarios/default_scenario.csv"
 
 class Settings(BaseSettings):
     system: SystemSettings = SystemSettings()

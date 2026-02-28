@@ -7,4 +7,4 @@ communication:
 
 simulation:
   update_interval_sec: 1.0
-  scenario_file: data/default_scenario.csv
+  scenario_file: data/scenarios/default_scenario.csv
