@@ -70,11 +70,11 @@ def render():
                     ui.label('Storage Battery (0x027D01)').classes('text-lg font-bold mb-2')
                     bat_id_input = ui.input('Identification Number (0x83)', value=settings.echonet.battery_id,
                                             placeholder='17 bytes hex').classes('w-full')
-                    bat_cap_input = ui.number('Rated Capacity (Wh)', value=settings.echonet.battery_rated_capacity_wh,
+                    bat_cap_input = ui.number('Rated Capacity (0xD0) [Wh]', value=settings.echonet.battery_rated_capacity_wh,
                                               step=100).classes('w-full')
-                    bat_charge_input = ui.number('Charge Power (W)', value=settings.echonet.battery_charge_power_w,
+                    bat_charge_input = ui.number('Charge Power Limit [W]', value=settings.echonet.battery_charge_power_w,
                                                  step=100).classes('w-full')
-                    bat_discharge_input = ui.number('Discharge Power (W)', value=settings.echonet.battery_discharge_power_w,
+                    bat_discharge_input = ui.number('Discharge Power Limit [W]', value=settings.echonet.battery_discharge_power_w,
                                                     step=100).classes('w-full')
 
                 # Water Heater
@@ -82,9 +82,9 @@ def render():
                     ui.label('Elec. Water Heater (0x026B01)').classes('text-lg font-bold mb-2')
                     wh_id_input = ui.input('Identification Number (0x83)', value=settings.echonet.water_heater_id,
                                            placeholder='17 bytes hex').classes('w-full')
-                    wh_cap_input = ui.number('Tank Capacity (L)', value=settings.echonet.water_heater_tank_capacity,
+                    wh_cap_input = ui.number('Tank Capacity (0xE2) [L]', value=settings.echonet.water_heater_tank_capacity,
                                              step=10).classes('w-full')
-                    wh_power_input = ui.number('Heating Power (W)', value=settings.echonet.water_heater_power_w,
+                    wh_power_input = ui.number('Heating Power [W]', value=settings.echonet.water_heater_power_w,
                                                step=100).classes('w-full')
 
                 # V2H
@@ -107,7 +107,7 @@ def render():
                     ui.label('Air Conditioner (0x013001)').classes('text-lg font-bold mb-2')
                     ac_id_input = ui.input('Identification Number (0x83)', value=settings.echonet.ac_id,
                                            placeholder='17 bytes hex').classes('w-full')
-                    ac_power_input = ui.number('Power Auto/Cool/Heat/Dehum [W]',
+                    ac_power_input = ui.number('Power Auto/Cool/Heat/Dehum (0x84) [W]',
                                                value=settings.echonet.ac_power_w,
                                                step=10).classes('w-full')
 
