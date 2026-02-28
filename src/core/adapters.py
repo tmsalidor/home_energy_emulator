@@ -283,13 +283,13 @@ class BatteryAdapter(BaseAdapter):
             if data == b'\x42' or data == b'\x41': # Charge or Rapid Charge
                 self.device.is_charging = True
                 self.device.is_discharging = False
-                self.device.instant_charge_power = 1000.0 # Fixed per requirement
+                self.device.instant_charge_power = self.device.max_charge_power_w
                 self.device.instant_discharge_power = 0.0
             elif data == b'\x43': # Discharge
                 self.device.is_charging = False
                 self.device.is_discharging = True
                 self.device.instant_charge_power = 0.0
-                self.device.instant_discharge_power = 1000.0 # Fixed per requirement
+                self.device.instant_discharge_power = self.device.max_discharge_power_w
             elif data == b'\x44': # Standby (Explicit)
                 self.device.is_charging = False
                 self.device.is_discharging = False
