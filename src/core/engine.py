@@ -33,6 +33,13 @@ class SimulationEngine:
             _scenario_path = "data/scenarios/default_scenario.csv"
         self._load_scenario(_scenario_path)
         
+        # Initialize properties from settings and consts
+        self._init_device_settings()
+        
+        logger.info("Simulation Engine Initialized")
+
+    def _init_device_settings(self):
+        """設定ファイル(settings.yaml)や固定プロパティから各デバイスの初期値を設定する"""
         if 0xD0 in BATTERY_STATIC_PROPS:
             try:
                 # 0xD0: Rated Electric Energy (4 bytes big endian Wh)
@@ -86,8 +93,6 @@ class SimulationEngine:
         except Exception as e:
             logger.error(f"Failed to load V2H settings: {e}")
 
-        logger.info("Simulation Engine Initialized")
-
     def _load_scenario(self, filepath: str):
         import csv
         import os
@@ -140,20 +145,10 @@ class SimulationEngine:
         t1 = prev_point['time_sec']
         t2 = next_point['time_sec']
         
-        # Build logic for wrap-around (23:59 -> 00:00) if needed, 
-        # but simple bounded search handles day cycle if inputs are 00:00 to 23:59.
-        # If wrapped (prev > next), we are across midnight conceptually, but `tm_sec` resets.
-        # Simple approach: if t1 > t2 (last point to first point), handling is tricky with 0-86400 wrap.
-        # If current_sec is between last and first (e.g. 23:59:30), t1=23:59, t2=00:00?
-        # Let's keep it simple: just use prev_point values if exact interpolation is too complex for this step,
-        # OR implementation standard linear interp.
-        
         if t1 == t2: return prev_point['load'], prev_point['solar']
         
-        # Handle wrap around case for logic correctness if needed, 
-        # but for now let's assume valid bounds or simple nearest/hold to simplify code complexity risk.
-        # Let's do simple Linear Interp between t1 and t2.
-        if t2 < t1: # Wrap around midnight case
+        # Wrap around midnight case
+        if t2 < t1:
              # e.g. t1=23:00 (82800), t2=06:00 (21600). current=02:00 (7200).
              # Shift t2 and current by +24h for calculation
              t2 += 86400
