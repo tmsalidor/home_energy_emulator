@@ -29,19 +29,31 @@ class SimulationEngine:
         
         if 0xD0 in BATTERY_STATIC_PROPS:
             try:
-                # 0xD0 is 4 bytes unsigned long (Wh) ? Or 225?
-                # Usually D0 is Rated Electric Energy.
-                # User config has D0 (208) as [0,0,54,176] -> 14000
+                # 0xD0: Rated Electric Energy (4 bytes big endian Wh)
                 data = BATTERY_STATIC_PROPS[0xD0]
-                # Assuming 4 bytes big endian
                 val = struct.unpack(">L", data)[0]
                 self.battery.rated_capacity_wh = float(val)
                 logger.info(f"Battery Rated Capacity initialized from property 0xD0: {val} Wh")
             except Exception as e:
                 logger.error(f"Failed to parse Battery Property 0xD0: {e}")
 
-            except Exception as e:
-                logger.error(f"Failed to parse Battery Property 0xD0: {e}")
+        # Settings の値で上書き（Settings が 0 でなければ優先）
+        try:
+            from src.config.settings import settings
+            cap = settings.echonet.battery_rated_capacity_wh
+            if cap > 0:
+                self.battery.rated_capacity_wh = cap
+                logger.info(f"Battery Rated Capacity overridden by Settings: {cap} Wh")
+            charge_w = settings.echonet.battery_charge_power_w
+            if charge_w > 0:
+                self.battery.max_charge_power_w = charge_w
+                logger.info(f"Battery Charge Power set from Settings: {charge_w} W")
+            discharge_w = settings.echonet.battery_discharge_power_w
+            if discharge_w > 0:
+                self.battery.max_discharge_power_w = discharge_w
+                logger.info(f"Battery Discharge Power set from Settings: {discharge_w} W")
+        except Exception as e:
+            logger.error(f"Failed to load Battery settings: {e}")
 
         # Initialize Water Heater Properties
         # 1. Tank Capacity from Settings

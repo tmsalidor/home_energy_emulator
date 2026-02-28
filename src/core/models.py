@@ -52,7 +52,11 @@ class Battery(BaseDevice):
     soc: float = 50.0 
     
     # 定格容量 (Wh)
-    rated_capacity_wh: float = 10000.0 
+    rated_capacity_wh: float = 10000.0
+
+    # 充放電電力上限 (W)
+    max_charge_power_w: float = 3000.0
+    max_discharge_power_w: float = 3000.0
 
     # 積算電力量 (Wh) - 内部管理用 (ECHONET Lite 0xA8, 0xA9 対応)
     cumulative_charge_wh: float = 0.0
