@@ -25,7 +25,13 @@ class SimulationEngine:
         # Scenario Data
         self.use_scenario = True
         self.scenario_data = [] # List of {'time_sec': int, 'load': float, 'solar': float}
-        self._load_scenario("data/scenarios/default_scenario.csv")
+        # settings からシナリオファイルを読み込む（循環インポート回避のため遅延 import）
+        try:
+            from src.config.settings import settings as _s
+            _scenario_path = _s.simulation.scenario_file
+        except Exception:
+            _scenario_path = "data/scenarios/default_scenario.csv"
+        self._load_scenario(_scenario_path)
         
         if 0xD0 in BATTERY_STATIC_PROPS:
             try:
