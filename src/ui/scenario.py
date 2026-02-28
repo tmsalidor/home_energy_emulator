@@ -58,8 +58,8 @@ def _get_echart_option(rows: list[dict[str, Any]]) -> dict:
     solars = [r["solar_w"] for r in rows]
     return {
         "tooltip": {"trigger": "axis"},
-        "legend": {"data": ["Load (W)", "Solar (W)"]},
-        "grid": {"left": "5%", "right": "5%", "bottom": "10%", "containLabel": True},
+        "legend": {"data": ["Load (W)", "Solar (W)"], "top": 0},
+        "grid": {"left": "5%", "right": "5%", "top": "40px", "bottom": "10%", "containLabel": True},
         "xAxis": {"type": "category", "data": times, "name": "Time"},
         "yAxis": {"type": "value", "name": "Power (W)"},
         "series": [
@@ -70,9 +70,9 @@ def _get_echart_option(rows: list[dict[str, Any]]) -> dict:
                 "smooth": True,
                 "symbol": "circle",
                 "symbolSize": 8,
-                "itemStyle": {"color": "#ef4444"},
-                "lineStyle": {"color": "#ef4444", "width": 2},
-                "areaStyle": {"color": "rgba(239,68,68,0.08)"},
+                "itemStyle": {"color": "#3b82f6"},
+                "lineStyle": {"color": "#3b82f6", "width": 2},
+                "areaStyle": {"color": "rgba(59,130,246,0.08)"},
             },
             {
                 "name": "Solar (W)",
@@ -113,113 +113,121 @@ def render():
         with ui.card().classes("w-full p-4"):
             ui.label("Scenarios").classes("text-xl font-bold mb-2")
 
-            with ui.row().classes("w-full items-end gap-4 flex-wrap"):
+            with ui.column().classes("w-full gap-3"):
 
-                scenario_select = ui.select(
-                    label="Scenario File",
-                    options=_list_scenario_files(),
-                    value=_initial_fname,
-                    on_change=lambda e: _on_scenario_changed(e.value),
-                ).classes("flex-grow min-w-52")
+                # --- 0行目: Active scenario 表示 ---
+                with ui.row().classes("items-baseline gap-2"):
+                    ui.label("Active scenario:").classes("text-sm text-gray-500")
+                    active_label = ui.label().classes("text-sm font-bold text-green-600")
 
                 def refresh_select():
                     scenario_select.options = _list_scenario_files()
                     scenario_select.update()
 
-                active_label = ui.label().classes("text-sm text-green-600 font-bold self-center")
-
                 def update_active_label():
-                    active_label.set_text(f"▶ Active: {active_file[0]}")
+                    active_label.set_text(active_file[0])
 
                 update_active_label()
 
-                def on_apply():
-                    fname = scenario_select.value
-                    if not fname:
-                        ui.notify("Please select a scenario.", type="warning")
-                        return
-                    path = str(SCENARIOS_DIR / fname)
-                    engine.switch_scenario(path)
-                    active_file[0] = fname
-                    settings.simulation.scenario_file = path
-                    settings.save_to_yaml()
-                    update_active_label()
-                    ui.notify(f"Set '{fname}' as active scenario.", type="positive")
+                # --- 1行目: ドロップダウン + Set as Active ---
+                with ui.row().classes("w-full items-end gap-4 flex-wrap"):
 
-                ui.button("▶ Set as Active", on_click=on_apply).props("color=primary")
+                    scenario_select = ui.select(
+                        label="Scenario File",
+                        options=_list_scenario_files(),
+                        value=_initial_fname,
+                        on_change=lambda e: _on_scenario_changed(e.value),
+                    ).classes("flex-grow min-w-52")
 
-                # ---- リネーム ----
-                def on_rename():
-                    fname = scenario_select.value
-                    if not fname:
-                        ui.notify("Please select a scenario.", type="warning")
-                        return
-                    stem = Path(fname).stem
-                    with ui.dialog() as dlg, ui.card().classes("p-6 min-w-80"):
-                        ui.label("Rename Scenario").classes("text-lg font-bold mb-4")
-                        inp = ui.input("New filename (without .csv)", value=stem).classes("w-full")
-                        with ui.row().classes("mt-4 gap-2 justify-end"):
-                            ui.button("Cancel", on_click=dlg.close).props("flat")
-                            def do_rename():
-                                new_stem = inp.value.strip()
-                                if not new_stem:
-                                    ui.notify("Please enter a filename.", type="warning")
-                                    return
-                                new_name = new_stem if new_stem.endswith(".csv") else f"{new_stem}.csv"
-                                if (SCENARIOS_DIR / new_name).exists():
-                                    ui.notify(f"'{new_name}' already exists.", type="negative")
-                                    return
-                                (SCENARIOS_DIR / fname).rename(SCENARIOS_DIR / new_name)
-                                if fname == active_file[0]:
-                                    active_file[0] = new_name
-                                    settings.simulation.scenario_file = str(SCENARIOS_DIR / new_name)
-                                    settings.save_to_yaml()
-                                    update_active_label()
-                                ui.notify(f"Renamed '{fname}' → '{new_name}'.", type="positive")
-                                refresh_select()
-                                scenario_select.value = new_name
-                                dlg.close()
-                            ui.button("Rename", on_click=do_rename).props("color=primary")
-                    dlg.open()
+                    def on_apply():
+                        fname = scenario_select.value
+                        if not fname:
+                            ui.notify("Please select a scenario.", type="warning")
+                            return
+                        path = str(SCENARIOS_DIR / fname)
+                        engine.switch_scenario(path)
+                        active_file[0] = fname
+                        settings.simulation.scenario_file = path
+                        settings.save_to_yaml()
+                        update_active_label()
+                        ui.notify(f"Set '{fname}' as active scenario.", type="positive")
 
-                ui.button("✏ Rename", on_click=on_rename).props("color=secondary flat")
+                    ui.button("▶ Set as Active", on_click=on_apply).props("color=primary")
 
-                def on_delete():
-                    fname = scenario_select.value
-                    if not fname:
-                        ui.notify("Please select a scenario.", type="warning")
-                        return
-                    if fname == active_file[0]:
-                        ui.notify("Cannot delete the active scenario.", type="negative")
-                        return
-                    path = SCENARIOS_DIR / fname
-                    if path.exists():
-                        path.unlink()
-                        ui.notify(f"Deleted '{fname}'.", type="warning")
+                # --- 2行目: ファイル操作ボタン ---
+                with ui.row().classes("gap-2 flex-wrap"):
+
+                    # ---- Rename ----
+                    def on_rename():
+                        fname = scenario_select.value
+                        if not fname:
+                            ui.notify("Please select a scenario.", type="warning")
+                            return
+                        stem = Path(fname).stem
+                        with ui.dialog() as dlg, ui.card().classes("p-6 min-w-80"):
+                            ui.label("Rename Scenario").classes("text-lg font-bold mb-4")
+                            inp = ui.input("New filename (without .csv)", value=stem).classes("w-full")
+                            with ui.row().classes("mt-4 gap-2 justify-end"):
+                                ui.button("Cancel", on_click=dlg.close).props("flat")
+                                def do_rename():
+                                    new_stem = inp.value.strip()
+                                    if not new_stem:
+                                        ui.notify("Please enter a filename.", type="warning")
+                                        return
+                                    new_name = new_stem if new_stem.endswith(".csv") else f"{new_stem}.csv"
+                                    if (SCENARIOS_DIR / new_name).exists():
+                                        ui.notify(f"'{new_name}' already exists.", type="negative")
+                                        return
+                                    (SCENARIOS_DIR / fname).rename(SCENARIOS_DIR / new_name)
+                                    if fname == active_file[0]:
+                                        active_file[0] = new_name
+                                        settings.simulation.scenario_file = str(SCENARIOS_DIR / new_name)
+                                        settings.save_to_yaml()
+                                        update_active_label()
+                                    ui.notify(f"Renamed '{fname}' → '{new_name}'.", type="positive")
+                                    refresh_select()
+                                    scenario_select.value = new_name
+                                    dlg.close()
+                                ui.button("Rename", on_click=do_rename).props("color=primary")
+                        dlg.open()
+
+                    ui.button("✏ Rename", on_click=on_rename).props("color=secondary flat")
+
+                    def on_delete():
+                        fname = scenario_select.value
+                        if not fname:
+                            ui.notify("Please select a scenario.", type="warning")
+                            return
+                        if fname == active_file[0]:
+                            ui.notify("Cannot delete the active scenario.", type="negative")
+                            return
+                        path = SCENARIOS_DIR / fname
+                        if path.exists():
+                            path.unlink()
+                            ui.notify(f"Deleted '{fname}'.", type="warning")
+                            refresh_select()
+                            if scenario_select.options:
+                                scenario_select.value = scenario_select.options[0]
+
+                    ui.button("🗑 Delete", on_click=on_delete).props("color=negative flat")
+
+                    def on_duplicate():
+                        fname = scenario_select.value
+                        if not fname:
+                            ui.notify("Please select a scenario.", type="warning")
+                            return
+                        stem = Path(fname).stem
+                        new_name = f"{stem}_copy.csv"
+                        counter = 1
+                        while (SCENARIOS_DIR / new_name).exists():
+                            new_name = f"{stem}_copy{counter}.csv"
+                            counter += 1
+                        shutil.copy(SCENARIOS_DIR / fname, SCENARIOS_DIR / new_name)
+                        ui.notify(f"Duplicated as '{new_name}'.", type="positive")
                         refresh_select()
-                        if scenario_select.options:
-                            scenario_select.value = scenario_select.options[0]
+                        scenario_select.value = new_name
 
-                ui.button("🗑 Delete", on_click=on_delete).props("color=negative flat")
-
-                def on_duplicate():
-                    fname = scenario_select.value
-                    if not fname:
-                        ui.notify("Please select a scenario.", type="warning")
-                        return
-                    stem = Path(fname).stem
-                    new_name = f"{stem}_copy.csv"
-                    counter = 1
-                    while (SCENARIOS_DIR / new_name).exists():
-                        new_name = f"{stem}_copy{counter}.csv"
-                        counter += 1
-                    shutil.copy(SCENARIOS_DIR / fname, SCENARIOS_DIR / new_name)
-                    ui.notify(f"Duplicated as '{new_name}'.", type="positive")
-                    refresh_select()
-                    scenario_select.value = new_name
-
-                ui.button("📋 Duplicate", on_click=on_duplicate).props("color=secondary flat")
-
+                    ui.button("📋 Duplicate", on_click=on_duplicate).props("color=secondary flat")
 
         # ==============================================================
         # セクション 2: グラフ
@@ -405,7 +413,7 @@ def render():
                     if fname == active_file[0]:
                         engine.switch_scenario(str(SCENARIOS_DIR / fname))
 
-                ui.button("💾 Save CSV", on_click=on_save).props("color=primary size=sm")
+                ui.button("💾 Save Scenario file", on_click=on_save).props("color=primary size=sm")
                 ui.label("Hint: Click a row to open the edit dialog.").classes("text-xs text-gray-400 self-center")
 
         # ==============================================================
