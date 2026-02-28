@@ -7,6 +7,7 @@ logger = logging.getLogger(__name__)
 from .battery_consts import BATTERY_STATIC_PROPS
 from .water_heater_consts import WATER_HEATER_STATIC_PROPS
 import struct
+from src.config.settings import settings
 
 class SimulationEngine:
     def __init__(self):
@@ -25,10 +26,9 @@ class SimulationEngine:
         # Scenario Data
         self.use_scenario = True
         self.scenario_data = [] # List of {'time_sec': int, 'load': float, 'solar': float}
-        # settings からシナリオファイルを読み込む（循環インポート回避のため遅延 import）
+        # settings からシナリオファイルを読み込む
         try:
-            from src.config.settings import settings as _s
-            _scenario_path = _s.simulation.scenario_file
+            _scenario_path = settings.simulation.scenario_file
         except Exception:
             _scenario_path = "data/scenarios/default_scenario.csv"
         self._load_scenario(_scenario_path)
@@ -45,7 +45,6 @@ class SimulationEngine:
 
         # Settings の値で上書き（Settings が 0 でなければ優先）
         try:
-            from src.config.settings import settings
             cap = settings.echonet.battery_rated_capacity_wh
             if cap > 0:
                 self.battery.rated_capacity_wh = cap
@@ -64,7 +63,6 @@ class SimulationEngine:
         # Initialize Water Heater Properties
         # 1. Tank Capacity from Settings
         try:
-            from src.config.settings import settings
             self.water_heater.tank_capacity = settings.echonet.water_heater_tank_capacity
             self.water_heater.heating_power_w = settings.echonet.water_heater_power_w
             logger.info(f"Water Heater configured: Cap={self.water_heater.tank_capacity}L, Power={self.water_heater.heating_power_w}W")
@@ -77,7 +75,6 @@ class SimulationEngine:
 
         # Initialize V2H Properties from Settings
         try:
-            from src.config.settings import settings
             self.v2h.battery_capacity_wh = settings.echonet.v2h_battery_capacity_wh
             self.v2h.charge_power_w = settings.echonet.v2h_charge_power_w
             self.v2h.discharge_power_w = settings.echonet.v2h_discharge_power_w
@@ -381,7 +378,6 @@ class SimulationEngine:
 
     def _get_aircon_power(self) -> float:
         """エアコンの現在の消費電力を返す"""
-        from src.config.settings import settings
         ac = self.air_conditioner
         if not ac.is_running:
             return 0.0
