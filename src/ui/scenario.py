@@ -58,13 +58,13 @@ def _get_echart_option(rows: list[dict[str, Any]]) -> dict:
     solars = [r["solar_w"] for r in rows]
     return {
         "tooltip": {"trigger": "axis"},
-        "legend": {"data": ["負荷 (W)", "太陽光 (W)"]},
+        "legend": {"data": ["Load (W)", "Solar (W)"]},
         "grid": {"left": "5%", "right": "5%", "bottom": "10%", "containLabel": True},
-        "xAxis": {"type": "category", "data": times, "name": "時刻"},
-        "yAxis": {"type": "value", "name": "電力 (W)"},
+        "xAxis": {"type": "category", "data": times, "name": "Time"},
+        "yAxis": {"type": "value", "name": "Power (W)"},
         "series": [
             {
-                "name": "負荷 (W)",
+                "name": "Load (W)",
                 "type": "line",
                 "data": loads,
                 "smooth": True,
@@ -75,7 +75,7 @@ def _get_echart_option(rows: list[dict[str, Any]]) -> dict:
                 "areaStyle": {"color": "rgba(239,68,68,0.08)"},
             },
             {
-                "name": "太陽光 (W)",
+                "name": "Solar (W)",
                 "type": "line",
                 "data": solars,
                 "smooth": True,
@@ -105,18 +105,18 @@ def render():
     active_file: list[str] = [_initial_fname]
 
     with ui.column().classes("w-full p-4 gap-4"):
-        ui.label("シナリオ管理").classes("text-3xl font-bold")
+        ui.label("Scenario Management").classes("text-3xl font-bold")
 
         # ==============================================================
         # セクション 1: シナリオ一覧 & アクション
         # ==============================================================
         with ui.card().classes("w-full p-4"):
-            ui.label("シナリオ一覧").classes("text-xl font-bold mb-2")
+            ui.label("Scenarios").classes("text-xl font-bold mb-2")
 
             with ui.row().classes("w-full items-end gap-4 flex-wrap"):
 
                 scenario_select = ui.select(
-                    label="シナリオファイル",
+                    label="Scenario File",
                     options=_list_scenario_files(),
                     value=_initial_fname,
                     on_change=lambda e: _on_scenario_changed(e.value),
@@ -129,14 +129,14 @@ def render():
                 active_label = ui.label().classes("text-sm text-green-600 font-bold self-center")
 
                 def update_active_label():
-                    active_label.set_text(f"▶ 実行中: {active_file[0]}")
+                    active_label.set_text(f"▶ Active: {active_file[0]}")
 
                 update_active_label()
 
                 def on_apply():
                     fname = scenario_select.value
                     if not fname:
-                        ui.notify("シナリオを選択してください", type="warning")
+                        ui.notify("Please select a scenario.", type="warning")
                         return
                     path = str(SCENARIOS_DIR / fname)
                     engine.switch_scenario(path)
@@ -144,69 +144,68 @@ def render():
                     settings.simulation.scenario_file = path
                     settings.save_to_yaml()
                     update_active_label()
-                    ui.notify(f"「{fname}」を実行シナリオに設定しました", type="positive")
+                    ui.notify(f"Set '{fname}' as active scenario.", type="positive")
 
-                ui.button("▶ 実行シナリオに設定", on_click=on_apply).props("color=primary")
+                ui.button("▶ Set as Active", on_click=on_apply).props("color=primary")
 
                 # ---- リネーム ----
                 def on_rename():
                     fname = scenario_select.value
                     if not fname:
-                        ui.notify("シナリオを選択してください", type="warning")
+                        ui.notify("Please select a scenario.", type="warning")
                         return
                     stem = Path(fname).stem
                     with ui.dialog() as dlg, ui.card().classes("p-6 min-w-80"):
-                        ui.label("シナリオ名を変更").classes("text-lg font-bold mb-4")
-                        inp = ui.input("新しいファイル名 (.csv は不要)", value=stem).classes("w-full")
+                        ui.label("Rename Scenario").classes("text-lg font-bold mb-4")
+                        inp = ui.input("New filename (without .csv)", value=stem).classes("w-full")
                         with ui.row().classes("mt-4 gap-2 justify-end"):
-                            ui.button("キャンセル", on_click=dlg.close).props("flat")
+                            ui.button("Cancel", on_click=dlg.close).props("flat")
                             def do_rename():
                                 new_stem = inp.value.strip()
                                 if not new_stem:
-                                    ui.notify("ファイル名を入力してください", type="warning")
+                                    ui.notify("Please enter a filename.", type="warning")
                                     return
                                 new_name = new_stem if new_stem.endswith(".csv") else f"{new_stem}.csv"
                                 if (SCENARIOS_DIR / new_name).exists():
-                                    ui.notify(f"「{new_name}」はすでに存在します", type="negative")
+                                    ui.notify(f"'{new_name}' already exists.", type="negative")
                                     return
                                 (SCENARIOS_DIR / fname).rename(SCENARIOS_DIR / new_name)
-                                # 実行中ファイルの場合は設定更新
                                 if fname == active_file[0]:
                                     active_file[0] = new_name
                                     settings.simulation.scenario_file = str(SCENARIOS_DIR / new_name)
                                     settings.save_to_yaml()
                                     update_active_label()
-                                ui.notify(f"「{fname}」→「{new_name}」に変更しました", type="positive")
+                                ui.notify(f"Renamed '{fname}' → '{new_name}'.", type="positive")
                                 refresh_select()
                                 scenario_select.value = new_name
                                 dlg.close()
-                            ui.button("変更", on_click=do_rename).props("color=primary")
+                            ui.button("Rename", on_click=do_rename).props("color=primary")
                     dlg.open()
 
-                ui.button("✏ 名前変更", on_click=on_rename).props("color=secondary flat")
+                ui.button("✏ Rename", on_click=on_rename).props("color=secondary flat")
 
                 def on_delete():
                     fname = scenario_select.value
                     if not fname:
-                        ui.notify("シナリオを選択してください", type="warning")
+                        ui.notify("Please select a scenario.", type="warning")
                         return
                     if fname == active_file[0]:
-                        ui.notify("実行中のシナリオは削除できません", type="negative")
+                        ui.notify("Cannot delete the active scenario.", type="negative")
                         return
                     path = SCENARIOS_DIR / fname
                     if path.exists():
                         path.unlink()
-                        ui.notify(f"「{fname}」を削除しました", type="warning")
+                        ui.notify(f"Deleted '{fname}'.", type="warning")
                         refresh_select()
                         if scenario_select.options:
                             scenario_select.value = scenario_select.options[0]
 
-                ui.button("🗑 削除", on_click=on_delete).props("color=negative flat")
+                ui.button("🗑 Delete", on_click=on_delete).props("color=negative flat")
 
                 def on_duplicate():
                     fname = scenario_select.value
                     if not fname:
-                        ui.notify("シナリオを選択してください", type="warning")
+                        ui.notify("Please select a scenario.", type="warning")
                         return
                     stem = Path(fname).stem
                     new_name = f"{stem}_copy.csv"
@@ -215,18 +214,18 @@ def render():
                         new_name = f"{stem}_copy{counter}.csv"
                         counter += 1
                     shutil.copy(SCENARIOS_DIR / fname, SCENARIOS_DIR / new_name)
-                    ui.notify(f"「{new_name}」として複製しました", type="positive")
+                    ui.notify(f"Duplicated as '{new_name}'.", type="positive")
                     refresh_select()
                     scenario_select.value = new_name
 
-                ui.button("📋 複製", on_click=on_duplicate).props("color=secondary flat")
+                ui.button("📋 Duplicate", on_click=on_duplicate).props("color=secondary flat")
 
 
         # ==============================================================
         # セクション 2: グラフ
         # ==============================================================
         with ui.card().classes("w-full p-4"):
-            ui.label("グラフ表示").classes("text-xl font-bold mb-2")
+            ui.label("Chart").classes("text-xl font-bold mb-2")
             chart = ui.echart(_get_echart_option(current_rows[0])).classes("w-full h-64")
 
             def refresh_chart(rows: list[dict[str, Any]]):
@@ -238,14 +237,14 @@ def render():
         # セクション 3: テーブル編集（NiceGUI ネイティブ ui.table）
         # ==============================================================
         with ui.card().classes("w-full p-4"):
-            ui.label("テーブル編集").classes("text-xl font-bold mb-2")
-            ui.label("行をクリックして編集、追加・削除は下のボタンで行います").classes("text-xs text-gray-400 mb-2")
+            ui.label("Data Editor").classes("text-xl font-bold mb-2")
+            ui.label("Click a row to edit. Use buttons below to add or delete rows.").classes("text-xs text-gray-400 mb-2")
 
             columns = [
-                {"name": "time",    "label": "時刻 (HH:MM)", "field": "time",    "align": "left",   "sortable": True},
-                {"name": "load_w",  "label": "負荷 (W)",      "field": "load_w",  "align": "right",  "sortable": True},
-                {"name": "solar_w", "label": "太陽光 (W)",    "field": "solar_w", "align": "right",  "sortable": True},
-                {"name": "notes",   "label": "メモ",          "field": "notes",   "align": "left"},
+                {"name": "time",    "label": "Time (HH:MM)", "field": "time",    "align": "left",   "sortable": True},
+                {"name": "load_w",  "label": "Load (W)",     "field": "load_w",  "align": "right",  "sortable": True},
+                {"name": "solar_w", "label": "Solar (W)",    "field": "solar_w", "align": "right",  "sortable": True},
+                {"name": "notes",   "label": "Notes",        "field": "notes",   "align": "left"},
             ]
 
             table = ui.table(
@@ -283,23 +282,23 @@ def render():
                     idx = None  # 追加モードでは未使用
 
                 with ui.dialog() as dlg, ui.card().classes("p-6 min-w-80"):
-                    ui.label("行を追加" if is_new else "行を編集").classes("text-lg font-bold mb-4")
+                    ui.label("Add Row" if is_new else "Edit Row").classes("text-lg font-bold mb-4")
 
                     current_time = row["time"]
                     time_opts = _TIME_OPTIONS if current_time in _TIME_OPTIONS else [current_time] + _TIME_OPTIONS
                     inp_time = ui.select(
-                        label="時刻",
+                        label="Time",
                         options=time_opts,
                         value=current_time,
                         with_input=True,
                     ).classes("w-full")
 
-                    inp_load  = ui.number("負荷 (W)",   value=row["load_w"],  format="%.0f", step=10)
-                    inp_solar = ui.number("太陽光 (W)", value=row["solar_w"], format="%.0f", step=10)
-                    inp_notes = ui.input("メモ",        value=row["notes"])
+                    inp_load  = ui.number("Load (W)",  value=row["load_w"],  format="%.0f", step=10)
+                    inp_solar = ui.number("Solar (W)", value=row["solar_w"], format="%.0f", step=10)
+                    inp_notes = ui.input("Notes",      value=row["notes"])
 
                     with ui.row().classes("mt-4 gap-2 justify-end"):
-                        ui.button("キャンセル", on_click=dlg.close).props("flat")
+                        ui.button("Cancel", on_click=dlg.close).props("flat")
 
                         def on_ok():
                             new_time = inp_time.value
@@ -308,7 +307,7 @@ def render():
                             if is_new:
                                 # 追加モード: 重複チェック
                                 if new_time in existing_times:
-                                    ui.notify(f"時刻「{new_time}」はすでに存在します", type="negative")
+                                    ui.notify(f"Time '{new_time}' already exists.", type="negative")
                                     return
                                 new_id = max((r.get("_id", -1) for r in current_rows[0]), default=-1) + 1
                                 new_row = {
@@ -323,7 +322,7 @@ def render():
                                 # 編集モード: 自分以外との重複チェック
                                 other_times = {r["time"] for r in current_rows[0] if r.get("_id") != row_id}
                                 if new_time in other_times:
-                                    ui.notify(f"時刻「{new_time}」はすでに存在します", type="negative")
+                                    ui.notify(f"Time '{new_time}' already exists.", type="negative")
                                     return
                                 rows = list(current_rows[0])
                                 rows[idx] = {
@@ -373,14 +372,14 @@ def render():
                         is_new=True,
                     )
 
-                ui.button("＋ 行追加", on_click=on_add_row).props("color=primary flat size=sm")
+                ui.button("+ Add Row", on_click=on_add_row).props("color=primary flat size=sm")
 
 
 
                 def on_delete_selected():
                     selected = table.selected
                     if not selected:
-                        ui.notify("削除する行を選択してください（行をクリック）", type="warning")
+                        ui.notify("Select a row to delete (click a row).", type="warning")
                         return
                     sel_ids = {s.get("_id") for s in selected}
                     rows = [r for r in current_rows[0] if r.get("_id") not in sel_ids]
@@ -389,12 +388,12 @@ def render():
                     refresh_chart(rows)
                     table.selected.clear()
 
-                ui.button("－ 行削除", on_click=on_delete_selected).props("color=negative flat size=sm")
+                ui.button("- Delete Row", on_click=on_delete_selected).props("color=negative flat size=sm")
 
                 def on_save():
                     fname = scenario_select.value
                     if not fname:
-                        ui.notify("シナリオを選択してください", type="warning")
+                        ui.notify("Please select a scenario.", type="warning")
                         return
                     rows = list(current_rows[0])
                     rows.sort(key=lambda r: r["time"])
@@ -402,12 +401,12 @@ def render():
                     current_rows[0] = rows
                     sync_table(rows)
                     refresh_chart(rows)
-                    ui.notify(f"「{fname}」を保存しました", type="positive", position="top")
+                    ui.notify(f"Saved '{fname}'.", type="positive", position="top")
                     if fname == active_file[0]:
                         engine.switch_scenario(str(SCENARIOS_DIR / fname))
 
-                ui.button("💾 CSV 保存", on_click=on_save).props("color=primary size=sm")
-                ui.label("ヒント: 行をクリックすると編集ダイアログが開きます").classes("text-xs text-gray-400 self-center")
+                ui.button("💾 Save CSV", on_click=on_save).props("color=primary size=sm")
+                ui.label("Hint: Click a row to open the edit dialog.").classes("text-xs text-gray-400 self-center")
 
         # ==============================================================
         # シナリオ選択変更時
