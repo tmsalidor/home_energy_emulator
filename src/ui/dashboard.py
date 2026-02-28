@@ -48,10 +48,10 @@ def render():
                 
                 # 1. Load Control
                 with ui.card().classes('w-96 p-4'):
-                    ui.label('Load').classes('text-lg font-bold mb-2')
+                    ui.label('Home Load').classes('text-lg font-bold mb-2')
                     with ui.row().classes('w-full items-center'):
-                        ui.label('Power:').classes('w-20 font-bold')
-                        sl_load = ui.slider(min=0, max=2000, step=10, value=500,
+                        ui.label('Power consumption:').classes('whitespace-nowrap font-bold')
+                        sl_load = ui.slider(min=0, max=3000, step=10, value=500,
                                             on_change=lambda e: (manual_override(), setattr(engine, 'current_load_w', float(e.value)))
                                            ).classes('flex-grow')
                         ui.label().bind_text_from(sl_load, 'value', backward=lambda v: f"{v:.2f} W").classes('w-20 text-right')
@@ -60,7 +60,7 @@ def render():
                 with ui.card().classes('w-96 p-4'):
                     ui.label('Solar').classes('text-lg font-bold mb-2')
                     with ui.row().classes('w-full items-center'):
-                        ui.label('Gen:').classes('w-20 font-bold')
+                        ui.label('Power generation:').classes('whitespace-nowrap font-bold')
                         sl_solar = ui.slider(min=0, max=5000, step=10, value=0,
                                              on_change=lambda e: (manual_override(), setattr(engine.solar, 'instant_generation_power', float(e.value)))
                                             ).classes('flex-grow')
@@ -72,7 +72,7 @@ def render():
                     
                     # SOC Control
                     with ui.row().classes('w-full items-center mb-2'):
-                        ui.label('SOC:').classes('w-20 font-bold')
+                        ui.label('SOC:').classes('whitespace-nowrap font-bold')
                         sl_soc = ui.slider(min=0, max=100, step=0.1, value=50, 
                                            on_change=lambda e: (manual_override(), setattr(engine.battery, 'soc', float(e.value)))
                                           ).classes('flex-grow')
@@ -80,7 +80,7 @@ def render():
 
                     # Power Control
                     with ui.row().classes('w-full items-center'):
-                        ui.label('Power:').classes('w-20 font-bold')
+                        ui.label('Power flow:').classes('whitespace-nowrap font-bold')
                         def update_battery(e):
                             if is_updating_ui: return
                             manual_override()
@@ -111,7 +111,7 @@ def render():
                      
                     # Remaining Hot Water
                     with ui.row().classes('w-full items-center mb-2'):
-                        ui.label('Amount:').classes('w-20 font-bold')
+                        ui.label('Remaining hot water amount:').classes('whitespace-nowrap font-bold')
                         sl_wh = ui.slider(min=0, max=500, step=1, value=185,
                                           on_change=lambda e: (manual_override(), setattr(engine.water_heater, 'remaining_hot_water', float(e.value)))
                                          ).classes('flex-grow')
@@ -119,7 +119,7 @@ def render():
                      
                     # Power Control
                     with ui.row().classes('w-full items-center'):
-                        ui.label('Power:').classes('w-20 font-bold')
+                        ui.label('Power consumption:').classes('whitespace-nowrap font-bold')
                          
                         def update_wh_power(e):
                             if is_updating_ui: return
@@ -135,7 +135,7 @@ def render():
                                 wh.heating_power_w = 0.0
                                 wh.auto_setting = 0x43 # Manual Stop
 
-                        sl_wh_power = ui.slider(min=0, max=3000, step=100, value=0, on_change=update_wh_power).classes('flex-grow')
+                        sl_wh_power = ui.slider(min=0, max=3000, step=10, value=0, on_change=update_wh_power).classes('flex-grow')
                         ui.label().bind_text_from(sl_wh_power, 'value', backward=lambda v: f"{int(v)} W").classes('w-20 text-right')
 
                 # 6. Air Conditioner Control
@@ -143,7 +143,7 @@ def render():
                     ui.label('Air Conditioner').classes('text-lg font-bold mb-2')
 
                     with ui.row().classes('w-full items-center'):
-                        ui.label('Power:').classes('w-20 font-bold')
+                        ui.label('Power consumption setting (heating, cooling, auto):').classes('whitespace-nowrap font-bold')
                         sl_ac_power = ui.slider(min=0, max=3000, step=10, value=settings.echonet.ac_power_w,
                                                 on_change=lambda e: (manual_override(), setattr(settings.echonet, 'ac_power_w', float(e.value)))
                                                ).classes('flex-grow')
@@ -155,7 +155,7 @@ def render():
 
                     # SOC (残容量)
                     with ui.row().classes('w-full items-center mb-2'):
-                        ui.label('SOC:').classes('w-20 font-bold')
+                        ui.label('SOC:').classes('whitespace-nowrap font-bold')
                         def update_v2h_soc(e):
                             if is_updating_ui: return
                             manual_override()
@@ -168,16 +168,16 @@ def render():
 
                     # 充電電力設定値 (0xEB)
                     with ui.row().classes('w-full items-center mb-2'):
-                        ui.label('Charge:').classes('w-20 font-bold')
-                        sl_v2h_charge = ui.slider(min=0, max=6000, step=100, value=3000,
+                        ui.label('Charging power setting:').classes('whitespace-nowrap font-bold')
+                        sl_v2h_charge = ui.slider(min=0, max=6000, step=10, value=3000,
                                                   on_change=lambda e: (manual_override(), setattr(engine.v2h, 'charge_power_w', float(e.value)))
                                                  ).classes('flex-grow')
                         ui.label().bind_text_from(sl_v2h_charge, 'value', backward=lambda v: f"{int(v)} W").classes('w-20 text-right')
 
                     # 放電電力設定値 (0xEC)
                     with ui.row().classes('w-full items-center'):
-                        ui.label('Discharge:').classes('w-20 font-bold')
-                        sl_v2h_discharge = ui.slider(min=0, max=6000, step=100, value=3000,
+                        ui.label('Max discharging power setting:').classes('whitespace-nowrap font-bold')
+                        sl_v2h_discharge = ui.slider(min=0, max=6000, step=10, value=3000,
                                                      on_change=lambda e: (manual_override(), setattr(engine.v2h, 'discharge_power_w', float(e.value)))
                                                     ).classes('flex-grow')
                         ui.label().bind_text_from(sl_v2h_discharge, 'value', backward=lambda v: f"{int(v)} W").classes('w-20 text-right')
