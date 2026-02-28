@@ -32,6 +32,7 @@ def render():
                 # Node Profile is always mandatory
                 ui.checkbox('Node Profile (0x0EF0)', value=True).props('disable').classes('w-full')
 
+                chk_sm = ui.checkbox('Smart Meter (0x0288)', value='smart_meter' in wifi_devs).classes('w-full')
                 chk_solar = ui.checkbox('Solar Power (0x0279)', value='solar' in wifi_devs).classes('w-full')
                 chk_battery = ui.checkbox('Storage Battery (0x027D)', value='battery' in wifi_devs).classes('w-full')
                 chk_wh = ui.checkbox('Elec. Water Heater (0x026B)', value='water_heater' in wifi_devs).classes('w-full')
@@ -117,6 +118,7 @@ def render():
             
             # Save Wi-Fi Devices
             new_wifi_devs = []
+            if chk_sm.value: new_wifi_devs.append('smart_meter')
             if chk_solar.value: new_wifi_devs.append('solar')
             if chk_battery.value: new_wifi_devs.append('battery')
             if chk_wh.value: new_wifi_devs.append('water_heater')
