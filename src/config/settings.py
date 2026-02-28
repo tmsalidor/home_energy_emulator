@@ -4,6 +4,16 @@ from pydantic_settings import BaseSettings
 from pydantic import BaseModel
 from typing import Optional
 
+_USER_CONFIG_PATH = "config/user_settings.yaml"
+
+def _deep_update(d: dict, u: dict) -> dict:
+    for k, v in u.items():
+        if isinstance(v, dict):
+            d[k] = _deep_update(d.get(k, {}), v)
+        else:
+            d[k] = v
+    return d
+
 class SystemSettings(BaseModel):
     log_level: str = "INFO"
 
@@ -24,10 +34,8 @@ class EchonetSettings(BaseModel):
     wifi_devices: list[str] = ["solar", "battery"] # Default enabled devices
     solar_id: str        = "FE00000000000000000000000000000200"
     battery_id: str      = "FE00000000000000000000000000000300"
-    water_heater_id: str = "FE00000000000000000000000000000400" # Smart Meter is 0400? Wait, check original file.
-    smart_meter_id: str  = "FE00000000000000000000000000000100" # Shifted? Or strict ID? 
-    # Original file had smart_meter_id 0400. Users usually don't overlap. 
-    # Let's check original content of settings.py again to be safe about IDs.
+    water_heater_id: str = "FE00000000000000000000000000000400"
+    smart_meter_id: str  = "FE00000000000000000000000000000100"
     
     # Device Specific Defaults
     battery_rated_capacity_wh: float = 10000.0
@@ -53,8 +61,6 @@ class Settings(BaseSettings):
     communication: CommunicationSettings = CommunicationSettings()
     echonet: EchonetSettings = EchonetSettings()
     simulation: SimulationSettings = SimulationSettings()
-    
-    _user_config_path: str = "config/user_settings.yaml"
 
     @classmethod
     def load_from_yaml(cls, default_path: str = "config/default_config.yaml") -> "Settings":
@@ -82,15 +88,7 @@ class Settings(BaseSettings):
                 with open(user_path, 'r', encoding='utf-8') as f:
                     user_data = yaml.safe_load(f) or {}
                     
-                    def deep_update(d, u):
-                        for k, v in u.items():
-                            if isinstance(v, dict):
-                                d[k] = deep_update(d.get(k, {}), v)
-                            else:
-                                d[k] = v
-                        return d
-                    
-                    deep_update(final_data, user_data)
+                    _deep_update(final_data, user_data)
                     # print(f"DEBUG: Loaded user settings from {user_path}")
             except Exception as e:
                 print(f"Failed to load user settings: {e}")
@@ -103,7 +101,7 @@ class Settings(BaseSettings):
     def save_to_yaml(self):
         # Save current state to user_settings.yaml
         try:
-            with open(self._user_config_path, 'w', encoding='utf-8') as f:
+            with open(_USER_CONFIG_PATH, 'w', encoding='utf-8') as f:
                 # Pydantic v2 use model_dump
                 yaml.dump(self.model_dump(), f, default_flow_style=False)
         except Exception as e:
