@@ -112,10 +112,15 @@ def render():
                     # Remaining Hot Water
                     with ui.row().classes('w-full items-center mb-2'):
                         ui.label('Remaining hot water amount:').classes('whitespace-nowrap font-bold')
-                        sl_wh = ui.slider(min=0, max=500, step=1, value=185,
-                                          on_change=lambda e: (manual_override(), setattr(engine.water_heater, 'remaining_hot_water', float(e.value)))
+                        def update_wh_amount(e):
+                            if is_updating_ui: return
+                            manual_override()
+                            pct = float(e.value) / 100.0
+                            engine.water_heater.remaining_hot_water = engine.water_heater.tank_capacity * pct
+                        sl_wh = ui.slider(min=0, max=100, step=0.1, value=50,
+                                          on_change=update_wh_amount
                                          ).classes('flex-grow')
-                        ui.label().bind_text_from(sl_wh, 'value', backward=lambda v: f"{int(v)} L").classes('w-20 text-right')
+                        ui.label().bind_text_from(sl_wh, 'value', backward=lambda v: f"{v:.1f} %").classes('w-20 text-right')
                      
                     # Power Control
                     with ui.row().classes('w-full items-center'):
@@ -200,7 +205,7 @@ def render():
         if bat.is_charging: state_str = "Charging"
         elif bat.is_discharging: state_str = "Discharging"
         
-        lbl_battery.set_text(f"Battery: {bat.soc:.2f}% ({state_str})")
+        lbl_battery.set_text(f"Battery: {bat.soc:.1f}% ({state_str})")
 
         # 2. Update Sliders from Engine State (Scenario or Manual or ECHONET Lite)
         
@@ -229,11 +234,10 @@ def render():
             wh = engine.water_heater
             state_wh = "Stopped"
             if wh.is_heating: state_wh = "Heating"
-            lbl_wh.set_text(f"Water Heater: {int(wh.remaining_hot_water)}L ({state_wh})")
+            wh_pct = (wh.remaining_hot_water / wh.tank_capacity * 100.0) if wh.tank_capacity > 0 else 0.0
+            lbl_wh.set_text(f"Water Heater: {wh_pct:.1f}% ({state_wh})")
             
-            sl_wh.value = wh.remaining_hot_water
-            # Update max if tank capacity changes
-            sl_wh.props(f'max={wh.tank_capacity}')
+            sl_wh.value = (wh.remaining_hot_water / wh.tank_capacity * 100.0) if wh.tank_capacity > 0 else 0
             
             # Water Heater Power
             if wh.is_heating:
