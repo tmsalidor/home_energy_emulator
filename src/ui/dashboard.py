@@ -16,10 +16,10 @@ def render():
             # Status Labels
             lbl_grid = ui.label().classes('text-lg')
             lbl_solar = ui.label().classes('text-lg')
-            lbl_battery = ui.label().classes('text-lg')
-            lbl_wh = ui.label().classes('text-lg')
-            lbl_v2h = ui.label().classes('text-lg')
             lbl_ac = ui.label().classes('text-lg')
+            lbl_wh = ui.label().classes('text-lg')
+            lbl_battery = ui.label().classes('text-lg')
+            lbl_v2h = ui.label().classes('text-lg')
             
             # Application Version
             ui.separator().classes('my-2')
@@ -46,7 +46,7 @@ def render():
             
             with ui.row().classes('w-full items-start wrap gap-4'):
                 
-                # 1. Load Control
+                # 1. Home Load Control
                 with ui.card().classes('w-96 p-4'):
                     ui.label('Home Load').classes('text-lg font-bold mb-2')
                     with ui.row().classes('w-full items-center'):
@@ -66,44 +66,16 @@ def render():
                                             ).classes('flex-grow')
                         ui.label().bind_text_from(sl_solar, 'value', backward=lambda v: f"{v:.2f} W").classes('w-20 text-right')
 
-                # 3. Battery Control
+                # 3. Air Conditioner Control
                 with ui.card().classes('w-96 p-4'):
-                    ui.label('Battery').classes('text-lg font-bold mb-2')
-                    
-                    # SOC Control
-                    with ui.row().classes('w-full items-center mb-2'):
-                        ui.label('SOC:').classes('whitespace-nowrap font-bold')
-                        sl_soc = ui.slider(min=0, max=100, step=0.1, value=50, 
-                                           on_change=lambda e: (manual_override(), setattr(engine.battery, 'soc', float(e.value)))
-                                          ).classes('flex-grow')
-                        ui.label().bind_text_from(sl_soc, 'value', backward=lambda v: f"{v:.1f} %").classes('w-20 text-right')
+                    ui.label('Air Conditioner').classes('text-lg font-bold mb-2')
 
-                    # Power Control
                     with ui.row().classes('w-full items-center'):
-                        ui.label('Power flow:').classes('whitespace-nowrap font-bold')
-                        def update_battery(e):
-                            if is_updating_ui: return
-                            manual_override()
-                            val = e.value
-                            bat = engine.battery
-                            if val > 0:
-                                bat.is_charging = True
-                                bat.is_discharging = False
-                                bat.instant_charge_power = float(val)
-                                bat.instant_discharge_power = 0.0
-                            elif val < 0:
-                                bat.is_charging = False
-                                bat.is_discharging = True
-                                bat.instant_charge_power = 0.0
-                                bat.instant_discharge_power = abs(float(val))
-                            else:
-                                bat.is_charging = False
-                                bat.is_discharging = False
-                                bat.instant_charge_power = 0.0
-                                bat.instant_discharge_power = 0.0
-
-                        sl_bat = ui.slider(min=-3000, max=3000, step=10, value=0, on_change=update_battery).classes('flex-grow')
-                        ui.label().bind_text_from(sl_bat, 'value', backward=lambda v: f"{v:.2f} W").classes('w-20 text-right')
+                        ui.label('Power consumption setting (heating, cooling, auto):').classes('whitespace-nowrap font-bold')
+                        sl_ac_power = ui.slider(min=0, max=3000, step=10, value=settings.echonet.ac_power_w,
+                                                on_change=lambda e: (manual_override(), setattr(settings.echonet, 'ac_power_w', float(e.value)))
+                                               ).classes('flex-grow')
+                        ui.label().bind_text_from(sl_ac_power, 'value', backward=lambda v: f"{int(v)} W").classes('w-20 text-right')
 
                 # 4. Water Heater Control
                 with ui.card().classes('w-96 p-4'):
@@ -143,18 +115,46 @@ def render():
                         sl_wh_power = ui.slider(min=0, max=3000, step=10, value=0, on_change=update_wh_power).classes('flex-grow')
                         ui.label().bind_text_from(sl_wh_power, 'value', backward=lambda v: f"{int(v)} W").classes('w-20 text-right')
 
-                # 6. Air Conditioner Control
+                # 5. Battery Control
                 with ui.card().classes('w-96 p-4'):
-                    ui.label('Air Conditioner').classes('text-lg font-bold mb-2')
+                    ui.label('Battery').classes('text-lg font-bold mb-2')
+                    
+                    # SOC Control
+                    with ui.row().classes('w-full items-center mb-2'):
+                        ui.label('SOC:').classes('whitespace-nowrap font-bold')
+                        sl_soc = ui.slider(min=0, max=100, step=0.1, value=50, 
+                                           on_change=lambda e: (manual_override(), setattr(engine.battery, 'soc', float(e.value)))
+                                          ).classes('flex-grow')
+                        ui.label().bind_text_from(sl_soc, 'value', backward=lambda v: f"{v:.1f} %").classes('w-20 text-right')
 
+                    # Power Control
                     with ui.row().classes('w-full items-center'):
-                        ui.label('Power consumption setting (heating, cooling, auto):').classes('whitespace-nowrap font-bold')
-                        sl_ac_power = ui.slider(min=0, max=3000, step=10, value=settings.echonet.ac_power_w,
-                                                on_change=lambda e: (manual_override(), setattr(settings.echonet, 'ac_power_w', float(e.value)))
-                                               ).classes('flex-grow')
-                        ui.label().bind_text_from(sl_ac_power, 'value', backward=lambda v: f"{int(v)} W").classes('w-20 text-right')
+                        ui.label('Power flow:').classes('whitespace-nowrap font-bold')
+                        def update_battery(e):
+                            if is_updating_ui: return
+                            manual_override()
+                            val = e.value
+                            bat = engine.battery
+                            if val > 0:
+                                bat.is_charging = True
+                                bat.is_discharging = False
+                                bat.instant_charge_power = float(val)
+                                bat.instant_discharge_power = 0.0
+                            elif val < 0:
+                                bat.is_charging = False
+                                bat.is_discharging = True
+                                bat.instant_charge_power = 0.0
+                                bat.instant_discharge_power = abs(float(val))
+                            else:
+                                bat.is_charging = False
+                                bat.is_discharging = False
+                                bat.instant_charge_power = 0.0
+                                bat.instant_discharge_power = 0.0
 
-                # 5. V2H Control
+                        sl_bat = ui.slider(min=-3000, max=3000, step=10, value=0, on_change=update_battery).classes('flex-grow')
+                        ui.label().bind_text_from(sl_bat, 'value', backward=lambda v: f"{v:.2f} W").classes('w-20 text-right')
+
+                # 6. V2H Control
                 with ui.card().classes('w-96 p-4'):
                     ui.label('V2H (EV Charger/Discharger)').classes('text-lg font-bold mb-2')
 
