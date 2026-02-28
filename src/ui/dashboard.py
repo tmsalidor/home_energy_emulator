@@ -71,7 +71,7 @@ def render():
                     ui.label('Air Conditioner').classes('text-lg font-bold mb-2')
 
                     with ui.row().classes('w-full items-center'):
-                        ui.label('Power consumption setting (heating, cooling, auto):').classes('whitespace-nowrap font-bold')
+                        ui.label('Power consumption setting (Auto, Heat, Cool, Dehum):').classes('whitespace-nowrap font-bold')
                         sl_ac_power = ui.slider(min=0, max=3000, step=10, value=settings.echonet.ac_power_w,
                                                 on_change=lambda e: (manual_override(), setattr(settings.echonet, 'ac_power_w', float(e.value)))
                                                ).classes('flex-grow')
