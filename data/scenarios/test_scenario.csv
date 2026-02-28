@@ -1,0 +1,11 @@
+time,load_w,solar_w,notes
+00:00,200.0,0.0,Deep Night Low Load
+06:00,500.0,0.0,Morning Wake Up
+09:00,800.0,1500.0,Morning Work
+10:00,1000.0,3000.0,
+12:00,600.0,3500.0,Peak Solar Noon
+14:00,600.0,3000.0,
+16:00,700.0,2000.0,Afternoon
+18:00,1800.0,100.0,Evening Peak
+21:00,1000.0,0.0,Night Relaxing
+23:00,400.0,0.0,Late Night

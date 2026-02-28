@@ -7,6 +7,8 @@ communication:
 echonet:
   ac_id: FE00000000000000000000000000000600
   ac_power_w: 500.0
+  battery_charge_power_w: 3000.0
+  battery_discharge_power_w: 3000.0
   battery_id: FE00000000000000000000000000000300
   battery_rated_capacity_wh: 10000.0
   maker_code: '000106'
@@ -27,7 +29,7 @@ echonet:
   - v2h
   - air_conditioner
 simulation:
-  scenario_file: data/default_scenario.csv
+  scenario_file: data/scenarios/default_scenario.csv
   update_interval_sec: 1.0
 system:
   log_level: INFO

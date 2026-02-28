@@ -25,7 +25,7 @@ class SimulationEngine:
         # Scenario Data
         self.use_scenario = True
         self.scenario_data = [] # List of {'time_sec': int, 'load': float, 'solar': float}
-        self._load_scenario("data/default_scenario.csv")
+        self._load_scenario("data/scenarios/default_scenario.csv")
         
         if 0xD0 in BATTERY_STATIC_PROPS:
             try:
@@ -108,6 +108,12 @@ class SimulationEngine:
             logger.info(f"Loaded {len(self.scenario_data)} scenario points")
         except Exception as e:
             logger.error(f"Failed to load scenario: {e}")
+
+    def switch_scenario(self, filepath: str):
+        """実行するシナリオを切り替える。再起動不要でエンジンに即時反映される。"""
+        self.scenario_data = []
+        self._load_scenario(filepath)
+        logger.info(f"Scenario switched to: {filepath}")
 
     def _get_current_scenario_values(self):
         if not self.scenario_data:
