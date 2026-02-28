@@ -1,0 +1,25 @@
+time,load_w,solar_w,notes
+00:00,280,0,Night base load
+01:00,250,0,Night base load
+02:00,240,0,Night base load
+03:00,230,0,Night base load
+04:00,240,0,Night base load
+05:00,300,0,Early morning
+06:00,450,50,Sunrise
+07:00,900,400,Morning activity
+08:00,700,1200,Commute / breakfast
+09:00,500,2200,Solar rising
+10:00,450,3200,Solar building
+11:00,420,3800,Near peak
+12:00,400,4200,Peak solar
+13:00,410,4100,Peak solar
+14:00,430,3800,Afternoon
+15:00,460,3000,Afternoon
+16:00,550,1800,Kids home
+17:00,900,700,Evening activity
+18:00,1200,100,Dinner prep
+19:00,1100,0,Dinner
+20:00,950,0,Evening
+21:00,800,0,Evening
+22:00,600,0,Late evening
+23:00,380,0,Night

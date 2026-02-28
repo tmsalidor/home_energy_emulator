@@ -1,0 +1,25 @@
+time,load_w,solar_w,notes
+00:00,280,0,Night base load
+01:00,250,0,Night base load
+02:00,240,0,Night base load
+03:00,230,0,Night base load
+04:00,240,0,Night base load
+05:00,300,0,Early morning
+06:00,450,0,Sunrise (overcast)
+07:00,900,0,Morning activity
+08:00,700,0,Commute / breakfast
+09:00,500,0,Overcast all day
+10:00,450,0,Thick clouds
+11:00,420,0,No solar generation
+12:00,400,0,Midday / rainy
+13:00,410,0,No solar generation
+14:00,430,0,Thick clouds
+15:00,460,0,Overcast
+16:00,550,0,Kids home
+17:00,900,0,Evening activity
+18:00,1200,0,Dinner prep
+19:00,1100,0,Dinner
+20:00,950,0,Evening
+21:00,800,0,Evening
+22:00,600,0,Late evening
+23:00,380,0,Night
