@@ -199,8 +199,8 @@ class BatteryAdapter(BaseAdapter):
         base = super()._get_supported_epcs()
         # Merge static props keys with dynamic props
         # Dynamic overrides: CF (Working Operation Status), DA (Operation Mode Setting), D3 (Follow-up for issue), E2 (Wh), E4 (SOC)
-        # Added: A4, A5, A8, A9
-        dynamic_epcs = [0xCF, 0xDA, 0xD3, 0xE2, 0xE4, 0xA4, 0xA5, 0xA8, 0xA9]
+        # Added: A0, A1, A2, A3, A4, A5, A8, A9, D0
+        dynamic_epcs = [0xCF, 0xD0, 0xDA, 0xD3, 0xE2, 0xE4, 0xA0, 0xA1, 0xA2, 0xA3, 0xA4, 0xA5, 0xA8, 0xA9]
         static_epcs = list(BATTERY_STATIC_PROPS.keys())
         return sorted(list(set(base + dynamic_epcs + static_epcs)))
 
@@ -213,14 +213,35 @@ class BatteryAdapter(BaseAdapter):
             val = int(d.soc)
             return struct.pack("B", val)
 
+        elif epc == 0xA0: # AC Effective Capacity (Charging) [Wh]
+            # 最大の充電可能容量。ここでは定格容量と同じとする
+            val = int(d.rated_capacity_wh)
+            return struct.pack(">L", max(0, min(val, 0xFFFFFFFF)))
+
+        elif epc == 0xA1: # AC Effective Capacity (Discharging) [Wh]
+            # 最大の放電可能容量。ここでは定格容量と同じとする
+            val = int(d.rated_capacity_wh)
+            return struct.pack(">L", max(0, min(val, 0xFFFFFFFF)))
+
+        elif epc == 0xA2: # AC Chargeable Capacity [Wh]
+            # 現在の充電可能容量 (定格 - 現在の残量)
+            current_wh = d.rated_capacity_wh * d.soc / 100.0
+            val = int(d.rated_capacity_wh - current_wh)
+            return struct.pack(">L", max(0, min(val, 0xFFFFFFFF)))
+
+        elif epc == 0xA3: # AC Dischargeable Capacity [Wh]
+            # 現在の放電可能容量 (現在の残量)
+            current_wh = int(d.rated_capacity_wh * d.soc / 100.0)
+            return struct.pack(">L", max(0, min(current_wh, 0xFFFFFFFF)))
+
         elif epc == 0xA4: # AC Chargeable Electric Energy (Wh)
-            # Rated Capacity - Current Stored Wh
+            # 現在の充電可能電力量
             current_wh = d.rated_capacity_wh * d.soc / 100.0
             val = int(d.rated_capacity_wh - current_wh)
             return struct.pack(">L", max(0, min(val, 0xFFFFFFFF)))
 
         elif epc == 0xA5: # AC Dischargeable Electric Energy (Wh)
-            # Same as current stored Wh (E2)
+            # 現在の放電可能電力量
             val = int(d.rated_capacity_wh * d.soc / 100.0)
             return struct.pack(">L", min(val, 0xFFFFFFFF))
             
@@ -237,6 +258,10 @@ class BatteryAdapter(BaseAdapter):
             # Calculate from rated_capacity_wh * soc / 100
             wh_val = int(d.rated_capacity_wh * d.soc / 100.0)
             return struct.pack(">L", wh_val)
+
+        elif epc == 0xD0: # Rated Electric Energy (Wh)
+            val = int(d.rated_capacity_wh)
+            return struct.pack(">L", max(0, min(val, 0xFFFFFFFF)))
 
         elif epc == 0xDA or epc == 0xCF: # Operation Mode Setting or Working Operation Status
             # 0x41: Rapid Charge, 0x42: Charge, 0x43: Discharge, 0x44: Standby
