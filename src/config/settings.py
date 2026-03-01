@@ -38,10 +38,10 @@ class EchonetSettings(BaseModel):
     smart_meter_id: str  = "FE00000000000000000000000000000100"
     
     # Device Specific Defaults
-    battery_rated_capacity_wh: float = 10000.0
-    battery_charge_power_w: float = 3000.0
-    battery_discharge_power_w: float = 3000.0
-    water_heater_tank_capacity: int = 500
+    battery_rated_capacity_wh: float = 14000.0
+    battery_charge_power_w: float = 1000.0
+    battery_discharge_power_w: float = 1000.0
+    water_heater_tank_capacity: int = 400
     water_heater_power_w: float = 1200.0
     # V2H (Electric Vehicle Charger/Discharger 0x027E)
     v2h_id: str = "FE00000000000000000000000000000500"
