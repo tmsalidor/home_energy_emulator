@@ -343,13 +343,15 @@ class SimulationEngine:
             # 太陽光・バッテリー放電を差し引いた後の正味販電量をV2Hが不足する
             bat = self.battery
             wh = self.water_heater
+            ac = self.air_conditioner
             p_solar = max(0.0, self.solar.instant_generation_power)
             p_bat_discharge = bat.instant_discharge_power if bat.is_discharging else 0.0
             p_bat_charge    = bat.instant_charge_power    if bat.is_charging    else 0.0
             p_wh            = wh.heating_power_w          if wh.is_heating       else 0.0
+            p_ac            = ac.instant_power_w
 
             # V2Hがない場合のネット販電電力（正=買電）
-            net_grid = (self.current_load_w + p_bat_charge + p_wh) - (p_solar + p_bat_discharge)
+            net_grid = (self.current_load_w + p_bat_charge + p_wh + p_ac) - (p_solar + p_bat_discharge)
 
             # 買電量が50Wを超えている場合にのみ放電
             over_50 = net_grid - 50.0
