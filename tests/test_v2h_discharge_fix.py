@@ -33,6 +33,7 @@ engine.water_heater.is_heating = False
 
 # V2Hを放電モードに設定
 engine.v2h.vehicle_connected = True
+engine.air_conditioner.is_running = False
 engine.v2h.operation_mode = 0x43
 engine.v2h.remaining_capacity_wh = 25000.0
 engine.v2h.charge_power_w = 3000.0
