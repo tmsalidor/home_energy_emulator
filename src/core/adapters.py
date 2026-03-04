@@ -263,14 +263,14 @@ class BatteryAdapter(BaseAdapter):
             val = int(d.rated_capacity_wh)
             return struct.pack(">L", max(0, min(val, 0xFFFFFFFF)))
 
-        elif epc == 0xDA or epc == 0xCF: # Operation Mode Setting or Working Operation Status
-            # 0x41: Rapid Charge, 0x42: Charge, 0x43: Discharge, 0x44: Standby
-            if d.is_charging:
-                return b'\x42'
-            elif d.is_discharging:
-                return b'\x43'
-            else:
-                return b'\x44' # Standby
+        elif epc == 0xDA: # Operation Mode Setting
+            return bytes([d.operation_mode])
+        
+        elif epc == 0xCF: # Working Operation Status
+            # 自動(0x46)のときは運転動作状態(0xCF)は待機(0x44)として応答する
+            if d.operation_mode == 0x46:
+                return b'\x44'
+            return bytes([d.operation_mode])
         
         elif epc == 0xD3: # Instantaneous Charge/Discharge Power
             # 4 bytes Signed Int (W). Positive: Charge, Negative: Discharge
@@ -305,22 +305,27 @@ class BatteryAdapter(BaseAdapter):
             elif data == b'\x31': self.device.is_running = False
             return True
         elif epc == 0xDA: # Operation Mode Setting
-            if data == b'\x42' or data == b'\x41': # Charge or Rapid Charge
-                self.device.is_charging = True
-                self.device.is_discharging = False
-                self.device.instant_charge_power = self.device.max_charge_power_w
-                self.device.instant_discharge_power = 0.0
-            elif data == b'\x43': # Discharge
-                self.device.is_charging = False
-                self.device.is_discharging = True
-                self.device.instant_charge_power = 0.0
-                self.device.instant_discharge_power = self.device.max_discharge_power_w
-            elif data == b'\x44': # Standby (Explicit)
-                self.device.is_charging = False
-                self.device.is_discharging = False
-                self.device.instant_charge_power = 0.0
-                self.device.instant_discharge_power = 0.0
-            return True
+            if data:
+                val = data[0]
+                if val in (0x41, 0x42, 0x43, 0x44, 0x46):
+                    self.device.operation_mode = val
+                    if val == 0x41 or val == 0x42: # Charge or Rapid Charge
+                        self.device.is_charging = True
+                        self.device.is_discharging = False
+                        self.device.instant_charge_power = self.device.max_charge_power_w
+                        self.device.instant_discharge_power = 0.0
+                    elif val == 0x43: # Discharge
+                        self.device.is_charging = False
+                        self.device.is_discharging = True
+                        self.device.instant_charge_power = 0.0
+                        self.device.instant_discharge_power = self.device.max_discharge_power_w
+                    elif val == 0x44 or val == 0x46: # Standby or auto
+                        self.device.is_charging = False
+                        self.device.is_discharging = False
+                        self.device.instant_charge_power = 0.0
+                        self.device.instant_discharge_power = 0.0
+                    return True
+            return False
         return super().set_property(epc, data)
 
 class ElectricWaterHeaterAdapter(BaseAdapter):

@@ -62,6 +62,10 @@ class Battery(BaseDevice):
     cumulative_charge_wh: float = 0.0
     cumulative_discharge_wh: float = 0.0 
 
+    # 運転モード (0xDA)
+    # 0x41: 急速充電, 0x42: 充電, 0x43: 放電, 0x44: 待機, 0x46: 自動
+    operation_mode: int = 0x44
+
 class ElectricWaterHeater(BaseDevice):
     device_type: Literal[DeviceType.ELECTRIC_WATER_HEATER] = DeviceType.ELECTRIC_WATER_HEATER
     
