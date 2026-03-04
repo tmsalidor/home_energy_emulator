@@ -238,12 +238,14 @@ class SimulationEngine:
         if bat.soc >= 100.0:
             if bat.is_charging:
                 logger.info("Battery fully charged. Stopping charge.")
+                bat.operation_mode = 0x44
                 bat.is_charging = False
                 bat.instant_charge_power = 0.0
                 
         if bat.soc <= 0.0:
             if bat.is_discharging:
                 logger.info("Battery empty. Stopping discharge.")
+                bat.operation_mode = 0x44
                 bat.is_discharging = False
                 bat.instant_discharge_power = 0.0
                 
