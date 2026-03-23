@@ -51,6 +51,8 @@ class EchonetSettings(BaseModel):
     # Air Conditioner (0x0130)
     ac_id: str = "FE00000000000000000000000000000600"
     ac_power_w: float = 500.0  # 自動/冷房/暖房/除湿 共通消費電力 (W)
+    # Instantaneous Water Heater (0x0272)
+    instant_water_heater_id: str = "FE00000000000000000000000000000700"
 
 class SimulationSettings(BaseModel):
     update_interval_sec: float = 1.0

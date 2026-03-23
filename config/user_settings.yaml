@@ -11,6 +11,7 @@ echonet:
   battery_discharge_power_w: 1000.0
   battery_id: FE00000000000000000000000000000300
   battery_rated_capacity_wh: 10000.0
+  instant_water_heater_id: FE00000000000000000000000000000700
   maker_code: '000106'
   node_profile_id: FE00000000000000000000000000000000
   smart_meter_id: FE00000000000000000000000000000100
@@ -28,6 +29,7 @@ echonet:
   - water_heater
   - v2h
   - air_conditioner
+  - instant_water_heater
 simulation:
   scenario_file: data/scenarios/default_scenario.csv
   update_interval_sec: 1.0

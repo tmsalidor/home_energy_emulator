@@ -1,6 +1,6 @@
 import time
 import logging
-from .models import SmartMeter, Solar, Battery, DeviceType, ElectricWaterHeater, V2H, AirConditioner
+from .models import SmartMeter, Solar, Battery, DeviceType, ElectricWaterHeater, V2H, AirConditioner, InstantWaterHeater
 
 logger = logging.getLogger(__name__)
 
@@ -16,6 +16,7 @@ class SimulationEngine:
         self.solar = Solar(device_id="sol_01")
         self.battery = Battery(device_id="bat_01")
         self.water_heater = ElectricWaterHeater(device_id="wh_01")
+        self.instant_water_heater = InstantWaterHeater(device_id="iwh_01")
         self.v2h = V2H(device_id="v2h_01")
         self.air_conditioner = AirConditioner(device_id="ac_01")
         
