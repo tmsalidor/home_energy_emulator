@@ -573,7 +573,7 @@ class InstantWaterHeaterAdapter(BaseAdapter):
 
     def _get_supported_epcs(self) -> list[int]:
         base = super()._get_supported_epcs()
-        dynamic_epcs = [0x80, 0xD0, 0xD1, 0xE1, 0xE2, 0xE3, 0xE4, 0xEF]
+        dynamic_epcs = [0x80, 0xD0, 0xD1, 0xD4, 0xD5, 0xE1, 0xE2, 0xE3, 0xE4, 0xEF]
         static_epcs = list(INSTANT_WH_STATIC_PROPS.keys())
         return sorted(list(set(base + dynamic_epcs + static_epcs)))
 
@@ -591,6 +591,10 @@ class InstantWaterHeaterAdapter(BaseAdapter):
             return bytes([d.e4_bath_reheating])
         elif epc == 0xD1:  # 給湯温度設定値
             return bytes([d.d1_hot_water_temp])
+        elif epc == 0xD4:  # 風呂湯量設定4
+            return bytes([d.d4_bath_volume])
+        elif epc == 0xD5:  # 風呂湯量設定4 設定可能最大レベル
+            return bytes([d.d5_bath_volume_max])
         elif epc == 0xE1:  # 風呂温度設定値
             return bytes([d.e1_bath_temp])
         elif epc == 0xE2:  # 風呂給湯器燃焼状態 (0xE4 を反映)
@@ -621,6 +625,10 @@ class InstantWaterHeaterAdapter(BaseAdapter):
         elif epc == 0xE1:  # 風呂温度設定値
             if data:
                 d.e1_bath_temp = data[0]
+                return True
+        elif epc == 0xD4:  # 風呂湯量設定4
+            if data:
+                d.d4_bath_volume = data[0]
                 return True
         elif epc == 0xE3:  # 風呂自動モード設定
             if data and data[0] in (0x41, 0x42):

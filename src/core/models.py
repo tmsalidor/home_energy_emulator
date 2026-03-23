@@ -120,6 +120,12 @@ class InstantWaterHeater(BaseDevice):
     # 風呂温度設定値 (0xE1) [°C]
     e1_bath_temp: int = 36
 
+    # 風呂湯量設定4 (0xD4)
+    d4_bath_volume: int = 6
+
+    # 風呂湯量設定4 設定可能最大レベル (0xD5)
+    d5_bath_volume_max: int = 12
+
 
 class AirConditioner(BaseDevice):
     device_type: Literal[DeviceType.AIR_CONDITIONER] = DeviceType.AIR_CONDITIONER

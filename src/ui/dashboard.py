@@ -214,6 +214,19 @@ def render():
                                               on_change=update_iwh_e1).classes('flex-grow')
                         ui.label().bind_text_from(sl_iwh_e1, 'value', backward=lambda v: f"{int(v)} °C").classes('w-20 text-right')
 
+                    # 風呂湯量設定4 (0xD4)
+                    with ui.row().classes('w-full items-center'):
+                        ui.label('Bath volume (0xD4):').classes('whitespace-nowrap font-bold')
+                        def update_iwh_d4(e):
+                            if is_updating_ui: return
+                            engine.instant_water_heater.d4_bath_volume = int(e.value)
+                        sl_iwh_d4 = ui.slider(min=0,
+                                              max=engine.instant_water_heater.d5_bath_volume_max,
+                                              step=1,
+                                              value=engine.instant_water_heater.d4_bath_volume,
+                                              on_change=update_iwh_d4).classes('flex-grow')
+                        ui.label().bind_text_from(sl_iwh_d4, 'value', backward=lambda v: f"{int(v)}").classes('w-20 text-right')
+
 
     def update_ui():
         nonlocal is_updating_ui
@@ -299,6 +312,7 @@ def render():
             lbl_iwh.set_text(f"Inst.WH: ({iwh_state}) Bath:{e3_mode} Reheat:{e4_mode}")
             sl_iwh_d1.value = iwh.d1_hot_water_temp
             sl_iwh_e1.value = iwh.e1_bath_temp
+            sl_iwh_d4.value = iwh.d4_bath_volume
 
             # V2H スライダー更新
             sl_v2h_soc.value = v2h_soc_pct
