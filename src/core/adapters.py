@@ -573,7 +573,7 @@ class InstantWaterHeaterAdapter(BaseAdapter):
 
     def _get_supported_epcs(self) -> list[int]:
         base = super()._get_supported_epcs()
-        dynamic_epcs = [0x80, 0xD0, 0xD1, 0xE1, 0xE2, 0xE3, 0xE4]
+        dynamic_epcs = [0x80, 0xD0, 0xD1, 0xE1, 0xE2, 0xE3, 0xE4, 0xEF]
         static_epcs = list(INSTANT_WH_STATIC_PROPS.keys())
         return sorted(list(set(base + dynamic_epcs + static_epcs)))
 
@@ -587,8 +587,8 @@ class InstantWaterHeaterAdapter(BaseAdapter):
         # 動的プロパティ
         if epc == 0x80:  # 動作状態
             return b'\x30' if d.is_running else b'\x31'
-        elif epc == 0xD0:  # 給湯器燃焼状態 (0xE3 を反映)
-            return bytes([d.e3_bath_auto_mode])
+        elif epc == 0xD0:  # 給湯器燃焼状態 (0xE4 を反映)
+            return bytes([d.e4_bath_reheating])
         elif epc == 0xD1:  # 給湯温度設定値
             return bytes([d.d1_hot_water_temp])
         elif epc == 0xE1:  # 風呂温度設定値
@@ -599,6 +599,8 @@ class InstantWaterHeaterAdapter(BaseAdapter):
             return bytes([d.e3_bath_auto_mode])
         elif epc == 0xE4:  # 風呂追い焚き動作設定
             return bytes([d.e4_bath_reheating])
+        elif epc == 0xEF:  # 沸き上げモード (0xE3 を反映)
+            return bytes([d.e3_bath_auto_mode])
 
         # 静的プロパティ
         if epc in INSTANT_WH_STATIC_PROPS:
