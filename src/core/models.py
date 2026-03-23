@@ -10,6 +10,7 @@ class DeviceType(str, Enum):
     INSTANT_WATER_HEATER = "instant_water_heater"
     V2H = "v2h"
     AIR_CONDITIONER = "air_conditioner"
+    FUEL_CELL = "fuel_cell"
 
 class BaseDevice(BaseModel):
     device_id: str
@@ -185,3 +186,26 @@ class V2H(BaseDevice):
     current_charge_w: float = 0.0
     # 今サイクルの実際の放電電力 [W]（放電中のみ正値）
     current_discharge_w: float = 0.0
+
+
+class FuelCell(BaseDevice):
+    device_type: Literal[DeviceType.FUEL_CELL] = DeviceType.FUEL_CELL
+
+    # 系統連系状態 (0xD0) 
+    # 0x00: 逆潮流可能, 0x01: 逆潮流なし 等
+    interconnection_status: int = 2
+
+    # 発電動作設定 (0xCA) / 状態 (0xCB)
+    # 0x41: 発電あり, 0x42: 発電なし
+    power_generation_setting: int = 0x41
+    power_generation_status: int = 0x41
+
+    # 定格発電出力 (0xC2) [W]
+    rated_power_w: float = 700.0
+
+    # 瞬時発電電力計測値 (0xC4) [W]
+    instant_generation_power_w: float = 0.0
+
+    # 積算発電電力量計測値 (0xC5) [Wh]
+    cumulative_generation_wh: float = 0.0
+

@@ -36,6 +36,7 @@ class EchonetSettings(BaseModel):
     battery_id: str      = "FE00000000000000000000000000000300"
     water_heater_id: str = "FE00000000000000000000000000000400"
     smart_meter_id: str  = "FE00000000000000000000000000000100"
+    fuel_cell_id: str    = "FE00000000000000000000000000000800"
     
     # Device Specific Defaults
     battery_rated_capacity_wh: float = 14000.0
