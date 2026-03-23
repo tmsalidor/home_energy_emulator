@@ -36,6 +36,7 @@ def render():
                 chk_solar = ui.checkbox('Solar Power (0x0279)', value='solar' in wifi_devs).classes('w-full')
                 chk_battery = ui.checkbox('Storage Battery (0x027D)', value='battery' in wifi_devs).classes('w-full')
                 chk_wh = ui.checkbox('Elec. Water Heater (0x026B)', value='water_heater' in wifi_devs).classes('w-full')
+                chk_iwh = ui.checkbox('Inst. Water Heater (0x0272)', value='instant_water_heater' in wifi_devs).classes('w-full')
                 chk_v2h = ui.checkbox('EV Charger/Discharger V2H (0x027E)', value='v2h' in wifi_devs).classes('w-full')
                 chk_ac = ui.checkbox('Air Conditioner (0x0130)', value='air_conditioner' in wifi_devs).classes('w-full')
 
@@ -112,6 +113,12 @@ def render():
                                                value=settings.echonet.ac_power_w,
                                                step=10).classes('w-full')
 
+                # Instantaneous Water Heater
+                with ui.card().classes('w-full p-4'):
+                    ui.label('Inst. Water Heater (0x027201)').classes('text-lg font-bold mb-2')
+                    iwh_id_input = ui.input('Identification Number (0x83)', value=settings.echonet.instant_water_heater_id,
+                                            placeholder='17 bytes hex').classes('w-full')
+
         def save_settings():
             settings.communication.b_route_id = id_input.value
             settings.communication.b_route_password = pwd_input.value
@@ -122,6 +129,7 @@ def render():
             if chk_solar.value: new_wifi_devs.append('solar')
             if chk_battery.value: new_wifi_devs.append('battery')
             if chk_wh.value: new_wifi_devs.append('water_heater')
+            if chk_iwh.value: new_wifi_devs.append('instant_water_heater')
             if chk_v2h.value: new_wifi_devs.append('v2h')
             if chk_ac.value: new_wifi_devs.append('air_conditioner')
             settings.echonet.wifi_devices = new_wifi_devs
@@ -143,6 +151,7 @@ def render():
             settings.echonet.v2h_discharge_power_w = float(v2h_discharge_input.value or 0)
             settings.echonet.ac_id = ac_id_input.value
             settings.echonet.ac_power_w = float(ac_power_input.value or 0)
+            settings.echonet.instant_water_heater_id = iwh_id_input.value
 
             settings.save_to_yaml()
             ui.notify('Settings saved. Please restart the application.', type='positive')

@@ -7,6 +7,7 @@ class DeviceType(str, Enum):
     SOLAR = "solar"
     BATTERY = "battery"
     ELECTRIC_WATER_HEATER = "electric_water_heater"
+    INSTANT_WATER_HEATER = "instant_water_heater"
     V2H = "v2h"
     AIR_CONDITIONER = "air_conditioner"
 
@@ -100,6 +101,30 @@ class ElectricWaterHeater(BaseDevice):
     # 昼間沸き増し設定 (0xC0)
     # 0x41: 昼間沸き増し許可, 0x42: 昼間沸き増し禁止
     c0_operation_status: int = 0x41
+
+
+class InstantWaterHeater(BaseDevice):
+    device_type: Literal[DeviceType.INSTANT_WATER_HEATER] = DeviceType.INSTANT_WATER_HEATER
+
+    # 風呂自動モード設定 (0xE3)
+    # 0x41: 自動, 0x42: 解除
+    e3_bath_auto_mode: int = 0x42
+
+    # 風呂追い焚き動作設定 (0xE4)
+    # 0x41: 動作, 0x42: 停止
+    e4_bath_reheating: int = 0x42
+
+    # 給湯温度設定値 (0xD1) [°C]
+    d1_hot_water_temp: int = 45
+
+    # 風呂温度設定値 (0xE1) [°C]
+    e1_bath_temp: int = 36
+
+    # 風呂湯量設定4 (0xD4)
+    d4_bath_volume: int = 6
+
+    # 風呂湯量設定4 設定可能最大レベル (0xD5)
+    d5_bath_volume_max: int = 12
 
 
 class AirConditioner(BaseDevice):

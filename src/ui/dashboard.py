@@ -18,6 +18,7 @@ def render():
             lbl_solar = ui.label().classes('text-lg')
             lbl_ac = ui.label().classes('text-lg')
             lbl_wh = ui.label().classes('text-lg')
+            lbl_iwh = ui.label().classes('text-lg')
             lbl_battery = ui.label().classes('text-lg')
             lbl_v2h = ui.label().classes('text-lg')
             
@@ -187,6 +188,45 @@ def render():
                                                     ).classes('flex-grow')
                         ui.label().bind_text_from(sl_v2h_discharge, 'value', backward=lambda v: f"{int(v)} W").classes('w-20 text-right')
 
+                # 7. Instantaneous Water Heater Control
+                with ui.card().classes('w-96 p-4'):
+                    ui.label('Inst. Water Heater').classes('text-lg font-bold mb-2')
+
+                    # 給湯温度設定値 (0xD1)
+                    with ui.row().classes('w-full items-center mb-2'):
+                        ui.label('Hot water temp (0xD1):').classes('whitespace-nowrap font-bold')
+                        def update_iwh_d1(e):
+                            if is_updating_ui: return
+                            engine.instant_water_heater.d1_hot_water_temp = int(e.value)
+                        sl_iwh_d1 = ui.slider(min=0, max=75, step=1,
+                                              value=engine.instant_water_heater.d1_hot_water_temp,
+                                              on_change=update_iwh_d1).classes('flex-grow')
+                        ui.label().bind_text_from(sl_iwh_d1, 'value', backward=lambda v: f"{int(v)} °C").classes('w-20 text-right')
+
+                    # 風呂温度設定値 (0xE1)
+                    with ui.row().classes('w-full items-center'):
+                        ui.label('Bath temp (0xE1):').classes('whitespace-nowrap font-bold')
+                        def update_iwh_e1(e):
+                            if is_updating_ui: return
+                            engine.instant_water_heater.e1_bath_temp = int(e.value)
+                        sl_iwh_e1 = ui.slider(min=0, max=60, step=1,
+                                              value=engine.instant_water_heater.e1_bath_temp,
+                                              on_change=update_iwh_e1).classes('flex-grow')
+                        ui.label().bind_text_from(sl_iwh_e1, 'value', backward=lambda v: f"{int(v)} °C").classes('w-20 text-right')
+
+                    # 風呂湯量設定4 (0xD4)
+                    with ui.row().classes('w-full items-center'):
+                        ui.label('Bath volume (0xD4):').classes('whitespace-nowrap font-bold')
+                        def update_iwh_d4(e):
+                            if is_updating_ui: return
+                            engine.instant_water_heater.d4_bath_volume = int(e.value)
+                        sl_iwh_d4 = ui.slider(min=0,
+                                              max=engine.instant_water_heater.d5_bath_volume_max,
+                                              step=1,
+                                              value=engine.instant_water_heater.d4_bath_volume,
+                                              on_change=update_iwh_d4).classes('flex-grow')
+                        ui.label().bind_text_from(sl_iwh_d4, 'value', backward=lambda v: f"{int(v)}").classes('w-20 text-right')
+
 
     def update_ui():
         nonlocal is_updating_ui
@@ -263,6 +303,16 @@ def render():
             ac_mode = ac_mode_names.get(ac.operation_mode, f'0x{ac.operation_mode:02X}')
             lbl_ac.set_text(f"AC: {ac.instant_power_w:.0f}W ({ac_state}, {ac_mode})")
             sl_ac_power.value = settings.echonet.ac_power_w
+
+            # Instantaneous Water Heater
+            iwh = engine.instant_water_heater
+            iwh_state = 'ON' if iwh.is_running else 'OFF'
+            e3_mode = 'Auto' if iwh.e3_bath_auto_mode == 0x41 else 'Off'
+            e4_mode = 'Reheat' if iwh.e4_bath_reheating == 0x41 else 'Off'
+            lbl_iwh.set_text(f"Inst.WH: ({iwh_state}) Bath:{e3_mode} Reheat:{e4_mode}")
+            sl_iwh_d1.value = iwh.d1_hot_water_temp
+            sl_iwh_e1.value = iwh.e1_bath_temp
+            sl_iwh_d4.value = iwh.d4_bath_volume
 
             # V2H スライダー更新
             sl_v2h_soc.value = v2h_soc_pct

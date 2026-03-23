@@ -2,13 +2,14 @@ import struct
 from typing import Optional
 from src.config.settings import settings
 from .echonet import EchonetObjectInterface
-from .models import Solar, Battery, SmartMeter, ElectricWaterHeater, V2H, AirConditioner
+from .models import Solar, Battery, SmartMeter, ElectricWaterHeater, V2H, AirConditioner, InstantWaterHeater
 from src.core.smart_meter_consts import SMART_METER_STATIC_PROPS
 from src.core.solar_consts import SOLAR_STATIC_PROPS
 from src.core.battery_consts import BATTERY_STATIC_PROPS
 from src.core.water_heater_consts import WATER_HEATER_STATIC_PROPS
 from src.core.v2h_consts import V2H_STATIC_PROPS
 from src.core.aircon_consts import AIRCON_STATIC_PROPS
+from src.core.instant_water_heater_consts import INSTANT_WH_STATIC_PROPS
 
 class BaseAdapter(EchonetObjectInterface):
     def __init__(self, config_id: str = None):
@@ -559,6 +560,84 @@ class V2HAdapter(BaseAdapter):
                 d.discharge_power_w = float(val)
             return True
 
+        return super().set_property(epc, data)
+
+
+
+class InstantWaterHeaterAdapter(BaseAdapter):
+    """瞬間式給湯器 (0x0272) アダプター"""
+
+    def __init__(self, device: InstantWaterHeater):
+        super().__init__(settings.echonet.instant_water_heater_id)
+        self.device = device
+
+    def _get_supported_epcs(self) -> list[int]:
+        base = super()._get_supported_epcs()
+        dynamic_epcs = [0x80, 0xD0, 0xD1, 0xD4, 0xD5, 0xE1, 0xE2, 0xE3, 0xE4, 0xEF]
+        static_epcs = list(INSTANT_WH_STATIC_PROPS.keys())
+        return sorted(list(set(base + dynamic_epcs + static_epcs)))
+
+    def get_property(self, epc: int) -> Optional[bytes]:
+        d = self.device
+
+        # Settings 優先プロパティ
+        if epc in (0x8A, 0x83):
+            return super().get_property(epc)
+
+        # 動的プロパティ
+        if epc == 0x80:  # 動作状態
+            return b'\x30' if d.is_running else b'\x31'
+        elif epc == 0xD0:  # 給湯器燃焼状態 (0xE4 を反映)
+            return bytes([d.e4_bath_reheating])
+        elif epc == 0xD1:  # 給湯温度設定値
+            return bytes([d.d1_hot_water_temp])
+        elif epc == 0xD4:  # 風呂湯量設定4
+            return bytes([d.d4_bath_volume])
+        elif epc == 0xD5:  # 風呂湯量設定4 設定可能最大レベル
+            return bytes([d.d5_bath_volume_max])
+        elif epc == 0xE1:  # 風呂温度設定値
+            return bytes([d.e1_bath_temp])
+        elif epc == 0xE2:  # 風呂給湯器燃焼状態 (0xE4 を反映)
+            return bytes([d.e4_bath_reheating])
+        elif epc == 0xE3:  # 風呂自動モード設定
+            return bytes([d.e3_bath_auto_mode])
+        elif epc == 0xE4:  # 風呂追い焚き動作設定
+            return bytes([d.e4_bath_reheating])
+        elif epc == 0xEF:  # 沸き上げモード (0xE3 を反映)
+            return bytes([d.e3_bath_auto_mode])
+
+        # 静的プロパティ
+        if epc in INSTANT_WH_STATIC_PROPS:
+            return INSTANT_WH_STATIC_PROPS[epc]
+
+        return super().get_property(epc)
+
+    def set_property(self, epc: int, data: bytes) -> bool:
+        d = self.device
+        if epc == 0x80:
+            if data == b'\x30': d.is_running = True
+            elif data == b'\x31': d.is_running = False
+            return True
+        elif epc == 0xD1:  # 給湯温度設定値
+            if data:
+                d.d1_hot_water_temp = data[0]
+                return True
+        elif epc == 0xE1:  # 風呂温度設定値
+            if data:
+                d.e1_bath_temp = data[0]
+                return True
+        elif epc == 0xD4:  # 風呂湯量設定4
+            if data:
+                d.d4_bath_volume = data[0]
+                return True
+        elif epc == 0xE3:  # 風呂自動モード設定
+            if data and data[0] in (0x41, 0x42):
+                d.e3_bath_auto_mode = data[0]
+                return True
+        elif epc == 0xE4:  # 風呂追い焚き動作設定
+            if data and data[0] in (0x41, 0x42):
+                d.e4_bath_reheating = data[0]
+                return True
         return super().set_property(epc, data)
 
 
