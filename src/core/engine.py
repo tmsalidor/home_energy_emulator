@@ -1,6 +1,6 @@
 import time
 import logging
-from .models import SmartMeter, Solar, Battery, DeviceType, ElectricWaterHeater, V2H, AirConditioner, InstantWaterHeater, FuelCell
+from .models import SmartMeter, Solar, Battery, DeviceType, ElectricWaterHeater, V2H, AirConditioner, InstantWaterHeater
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +19,6 @@ class SimulationEngine:
         self.instant_water_heater = InstantWaterHeater(device_id="iwh_01")
         self.v2h = V2H(device_id="v2h_01")
         self.air_conditioner = AirConditioner(device_id="ac_01")
-        self.fuel_cell = FuelCell(device_id="fc_01")
         
         # Simulation State
         self.current_load_w: float = 500.0  # Base household load
@@ -191,9 +190,6 @@ class SimulationEngine:
         # 1.7 Update V2H State
         self._update_v2h(dt)
 
-        # 1.8 Update Fuel Cell State
-        self._update_fuel_cell(dt)
-
         # 1.9 Update Air Conditioner State
         self._update_aircon(dt)
 
@@ -208,9 +204,6 @@ class SimulationEngine:
         # Guard: Solar power cannot be negative
         if p_solar < 0: p_solar = 0
 
-        # Fuel Cell Generation
-        p_fc = self.fuel_cell.instant_generation_power_w
-
         # Water Heater Load
         p_wh = self.water_heater.heating_power_w if self.water_heater.is_heating else 0.0
 
@@ -221,7 +214,7 @@ class SimulationEngine:
         # Air Conditioner Load
         p_ac = self.air_conditioner.instant_power_w
 
-        p_grid = (p_load + p_charge + p_wh + p_v2h_charge + p_ac) - (p_solar + p_fc + p_discharge + p_v2h_discharge)
+        p_grid = (p_load + p_charge + p_wh + p_v2h_charge + p_ac) - (p_solar + p_discharge + p_v2h_discharge)
         
         self.smart_meter.instant_current_power = p_grid
         
@@ -401,40 +394,6 @@ class SimulationEngine:
         p = self._get_aircon_power()
         ac.instant_power_w = p
         ac.cumulative_power_wh += p * (dt / 3600.0)
-
-    def _update_fuel_cell(self, dt: float):
-        """燃料電池の発電ロジック"""
-        fc = self.fuel_cell
-        if not fc.is_running or fc.power_generation_setting != 0x41:
-            fc.instant_generation_power_w = 0.0
-            return
-            
-        rated = fc.rated_power_w
-        
-        if fc.interconnection_status == 0:
-            # 0=逆潮流可能 なら定格出力まで発電
-            fc.instant_generation_power_w = rated
-        else:
-            bat = self.battery
-            wh = self.water_heater
-            ac = self.air_conditioner
-            v2h = self.v2h
-            
-            p_solar = max(0.0, self.solar.instant_generation_power)
-            p_bat_charge = bat.instant_charge_power if bat.is_charging else 0.0
-            p_bat_discharge = bat.instant_discharge_power if bat.is_discharging else 0.0
-            p_wh = wh.heating_power_w if wh.is_heating else 0.0
-            p_ac = ac.instant_power_w
-            p_v2h_charge = v2h.current_charge_w
-            p_v2h_discharge = v2h.current_discharge_w
-            
-            # 燃料電池以外の正味負荷 = (全消費) - (燃料電池以外の全発電)
-            net_load = (self.current_load_w + p_bat_charge + p_wh + p_v2h_charge + p_ac) - (p_solar + p_bat_discharge + p_v2h_discharge)
-            
-            fc.instant_generation_power_w = min(rated, max(0.0, net_load))
-            
-        fc.cumulative_generation_wh += fc.instant_generation_power_w * (dt / 3600.0)
-
 
 
 # Global Singleton

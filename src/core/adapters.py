@@ -2,7 +2,7 @@ import struct
 from typing import Optional
 from src.config.settings import settings
 from .echonet import EchonetObjectInterface
-from .models import Solar, Battery, SmartMeter, ElectricWaterHeater, V2H, AirConditioner, InstantWaterHeater, FuelCell
+from .models import Solar, Battery, SmartMeter, ElectricWaterHeater, V2H, AirConditioner, InstantWaterHeater
 from src.core.smart_meter_consts import SMART_METER_STATIC_PROPS
 from src.core.solar_consts import SOLAR_STATIC_PROPS
 from src.core.battery_consts import BATTERY_STATIC_PROPS
@@ -10,7 +10,6 @@ from src.core.water_heater_consts import WATER_HEATER_STATIC_PROPS
 from src.core.v2h_consts import V2H_STATIC_PROPS
 from src.core.aircon_consts import AIRCON_STATIC_PROPS
 from src.core.instant_water_heater_consts import INSTANT_WH_STATIC_PROPS
-from src.core.fuel_cell_consts import FUEL_CELL_STATIC_PROPS
 
 class BaseAdapter(EchonetObjectInterface):
     def __init__(self, config_id: str = None):
@@ -709,69 +708,3 @@ class AirConditionerAdapter(BaseAdapter):
                 d.air_flow_volume = data[0]
                 return True
         return super().set_property(epc, data)
-
-class FuelCellAdapter(BaseAdapter):
-    """燃料電池 (0x027C) アダプター"""
-
-    def __init__(self, device: FuelCell):
-        super().__init__(settings.echonet.fuel_cell_id)
-        self.device = device
-        
-    def _get_supported_epcs(self) -> list[int]:
-        base = super()._get_supported_epcs()
-        # Merge static props keys with dynamic props
-        # Dynamic overrides: 80, C2, C4, C5, CA, CB, D0
-        dynamic_epcs = [0x80, 0xC2, 0xC4, 0xC5, 0xCA, 0xCB, 0xD0]
-        static_epcs = list(FUEL_CELL_STATIC_PROPS.keys())
-        return sorted(list(set(base + dynamic_epcs + static_epcs)))
-
-    def get_property(self, epc: int) -> Optional[bytes]:
-        d = self.device
-        
-        # 1. Dynamic Measurement Values
-        if epc == 0xD0: 
-            return struct.pack('B', d.interconnection_status)
-        elif epc == 0xCA:
-            return struct.pack('B', d.power_generation_setting)
-        elif epc == 0xCB:
-            return struct.pack('B', d.power_generation_status)
-        elif epc == 0xC2:
-            return struct.pack('>H', int(d.rated_power_w))
-        elif epc == 0xC4:
-            return struct.pack('>H', int(d.instant_generation_power_w))
-        elif epc == 0xC5:
-            # 積算発電量は4 bytes (Wh)
-            return struct.pack('>L', int(d.cumulative_generation_wh))
-            
-        # 2. Static Properties
-        # FIX: Force use of settings for Maker Code (0x8A) and ID (0x83)
-        if epc == 0x8A or epc == 0x83:
-            return super().get_property(epc)
-
-        if epc in FUEL_CELL_STATIC_PROPS:
-            return FUEL_CELL_STATIC_PROPS[epc]
-
-        # 3. Fallback
-        if epc == 0x80:
-            return b'\x30' if d.is_running else b'\x31'
-            
-        return super().get_property(epc)
-
-    def set_property(self, epc: int, data: bytes) -> bool:
-        if not data:
-            return False
-            
-        if epc == 0x80:
-            if data == b'\x30': self.device.is_running = True
-            elif data == b'\x31': self.device.is_running = False
-            return True
-        elif epc == 0xCA:
-            # 発電動作設定
-            if len(data) >= 1:
-                val = data[0]
-                if val in (0x41, 0x42):
-                    self.device.power_generation_setting = val
-                    self.device.power_generation_status = val
-                    return True
-        return super().set_property(epc, data)
-

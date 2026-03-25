@@ -19,7 +19,6 @@ def render():
             lbl_ac = ui.label().classes('text-lg')
             lbl_wh = ui.label().classes('text-lg')
             lbl_iwh = ui.label().classes('text-lg')
-            lbl_fc = ui.label().classes('text-lg')
             lbl_battery = ui.label().classes('text-lg')
             lbl_v2h = ui.label().classes('text-lg')
             
@@ -228,6 +227,7 @@ def render():
                                               on_change=update_iwh_d4).classes('flex-grow')
                         ui.label().bind_text_from(sl_iwh_d4, 'value', backward=lambda v: f"{int(v)}").classes('w-20 text-right')
 
+
     def update_ui():
         nonlocal is_updating_ui
 
@@ -246,10 +246,6 @@ def render():
         elif bat.is_discharging: state_str = "Discharging"
         
         lbl_battery.set_text(f"Battery: {bat.soc:.1f}% ({state_str})")
-
-        fc = engine.fuel_cell
-        fc_state_str = "ON" if fc.power_generation_status == 0x41 else "OFF"
-        lbl_fc.set_text(f"Fuel Cell: {fc.instant_generation_power_w:.0f} W ({fc_state_str})")
 
         # 2. Update Sliders from Engine State (Scenario or Manual or ECHONET Lite)
         
