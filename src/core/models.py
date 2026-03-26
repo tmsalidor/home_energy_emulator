@@ -158,7 +158,7 @@ class FuelCell(BaseDevice):
 
     # 0xCB: 発電動作設定 (Power generation operation setting) - Settable
     # 0x41: 発電動作, 0x42: 発電停止
-    power_generation_setting: int = 0x41
+    power_generation_setting: int = 0x42
 
     # 0xD0: 系統連系状態 (System interconnection status)
     # 0x00: 逆潮流可能, 0x01: 逆潮流不可, 0x02: 独立運転
