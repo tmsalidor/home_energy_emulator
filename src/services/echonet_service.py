@@ -81,7 +81,7 @@ async def start_echonet_service():
         wifi_echonet_ctrl.register_instance(0x02, 0x72, 0x01, InstantWaterHeaterAdapter(engine.instant_water_heater))
 
     if 'fuel_cell' in enabled_devs:
-        wifi_echonet_ctrl.register_instance(0x02, 0x7C, 0x01, FuelCellAdapter(engine.fuel_cell))
+        wifi_echonet_ctrl.register_instance(0x02, 0x7C, 0x01, FuelCellAdapter(engine.fuel_cell, engine.instant_water_heater))
     
     # --- 2. Wi-SUN Controller Setup (Smart Meter) ---
     # Node Profile for Wi-SUN: Smart Meter(0288)

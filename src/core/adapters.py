@@ -711,9 +711,10 @@ class AirConditionerAdapter(BaseAdapter):
         return super().set_property(epc, data)
 
 class FuelCellAdapter(BaseAdapter):
-    def __init__(self, device: FuelCell):
+    def __init__(self, device: FuelCell, instant_wh: InstantWaterHeater = None):
         super().__init__(settings.echonet.fuel_cell_id)
         self.device = device
+        self.instant_wh = instant_wh
 
     def _get_supported_epcs(self) -> list[int]:
         base = super()._get_supported_epcs()
@@ -728,7 +729,9 @@ class FuelCellAdapter(BaseAdapter):
         if epc == 0x80:
             return b'\x30' if d.is_running else b'\x31'
 
-        elif epc == 0xCB:  # 発電動作状態 (Power generation status)
+        elif epc == 0xCB:  # 発電動作状態 (Power generation status) - 瞬間式給湯器の0xD0に追随
+            if self.instant_wh is not None:
+                return bytes([self.instant_wh.e4_bath_reheating])
             return bytes([d.power_generation_setting])
 
         elif epc == 0xC4:  # 瞬時発電電力計測値 (W) - unsigned 16bit
