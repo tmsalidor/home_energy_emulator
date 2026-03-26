@@ -39,6 +39,7 @@ def render():
                 chk_iwh = ui.checkbox('Inst. Water Heater (0x0272)', value='instant_water_heater' in wifi_devs).classes('w-full')
                 chk_v2h = ui.checkbox('EV Charger/Discharger V2H (0x027E)', value='v2h' in wifi_devs).classes('w-full')
                 chk_ac = ui.checkbox('Air Conditioner (0x0130)', value='air_conditioner' in wifi_devs).classes('w-full')
+                chk_fc = ui.checkbox('Fuel Cell (0x027C)', value='fuel_cell' in wifi_devs).classes('w-full')
 
             # 2. ECHONET Lite Property Settings
             with ui.column().classes('flex-1 min-w-[300px] gap-4'):
@@ -119,6 +120,15 @@ def render():
                     iwh_id_input = ui.input('Identification Number (0x83)', value=settings.echonet.instant_water_heater_id,
                                             placeholder='17 bytes hex').classes('w-full')
 
+                # Fuel Cell
+                with ui.card().classes('w-full p-4'):
+                    ui.label('Fuel Cell (0x027C01)').classes('text-lg font-bold mb-2')
+                    fc_id_input = ui.input('Identification Number (0x83)', value=settings.echonet.fuel_cell_id,
+                                           placeholder='17 bytes hex').classes('w-full')
+                    fc_power_input = ui.number('Rated Power Generation Output (0xC2) [W]',
+                                               value=settings.echonet.fuel_cell_rated_power_w,
+                                               step=10).classes('w-full')
+
         def save_settings():
             settings.communication.b_route_id = id_input.value
             settings.communication.b_route_password = pwd_input.value
@@ -132,6 +142,7 @@ def render():
             if chk_iwh.value: new_wifi_devs.append('instant_water_heater')
             if chk_v2h.value: new_wifi_devs.append('v2h')
             if chk_ac.value: new_wifi_devs.append('air_conditioner')
+            if chk_fc.value: new_wifi_devs.append('fuel_cell')
             settings.echonet.wifi_devices = new_wifi_devs
             
             settings.echonet.maker_code = maker_input.value
@@ -152,6 +163,8 @@ def render():
             settings.echonet.ac_id = ac_id_input.value
             settings.echonet.ac_power_w = float(ac_power_input.value or 0)
             settings.echonet.instant_water_heater_id = iwh_id_input.value
+            settings.echonet.fuel_cell_id = fc_id_input.value
+            settings.echonet.fuel_cell_rated_power_w = float(fc_power_input.value or 0)
 
             settings.save_to_yaml()
             ui.notify('Settings saved. Please restart the application.', type='positive')

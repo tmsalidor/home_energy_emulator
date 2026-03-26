@@ -21,6 +21,7 @@ def render():
             lbl_iwh = ui.label().classes('text-lg')
             lbl_battery = ui.label().classes('text-lg')
             lbl_v2h = ui.label().classes('text-lg')
+            lbl_fuel_cell = ui.label().classes('text-lg')
             
             # Application Version
             ui.separator().classes('my-2')
@@ -227,6 +228,20 @@ def render():
                                               on_change=update_iwh_d4).classes('flex-grow')
                         ui.label().bind_text_from(sl_iwh_d4, 'value', backward=lambda v: f"{int(v)}").classes('w-20 text-right')
 
+                # 8. Fuel Cell Control
+                with ui.card().classes('w-96 p-4'):
+                    ui.label('Fuel Cell').classes('text-lg font-bold mb-2')
+
+                    with ui.row().classes('w-full items-center'):
+                        ui.label('Power generation:').classes('whitespace-nowrap font-bold')
+                        def update_fc_power(e):
+                            if is_updating_ui: return
+                            manual_override()
+                            engine.fuel_cell.instant_generation_power = float(e.value)
+                        sl_fc_power = ui.slider(min=0, max=int(engine.fuel_cell.rated_power_w), step=10, value=0,
+                                                on_change=update_fc_power).classes('flex-grow')
+                        ui.label().bind_text_from(sl_fc_power, 'value', backward=lambda v: f"{int(v)} W").classes('w-20 text-right')
+
 
     def update_ui():
         nonlocal is_updating_ui
@@ -318,6 +333,13 @@ def render():
             sl_v2h_soc.value = v2h_soc_pct
             sl_v2h_charge.value = v2h.charge_power_w
             sl_v2h_discharge.value = v2h.discharge_power_w
+
+            # Fuel Cell
+            fc = engine.fuel_cell
+            fc_setting = 'Generating' if fc.power_generation_setting == 0x41 else 'Stopped'
+            fc_interconnect = {0x00: 'Grid(Rev.OK)', 0x01: 'Grid(Rev.NG)', 0x02: 'Independent'}.get(fc.system_interconnection_status, f'0x{fc.system_interconnection_status:02X}')
+            lbl_fuel_cell.set_text(f"Fuel Cell: {fc.instant_generation_power:.0f}W ({fc_setting}, {fc_interconnect})")
+            sl_fc_power.value = fc.instant_generation_power
         finally:
             is_updating_ui = False
         

@@ -28,15 +28,15 @@ class CommunicationSettings(BaseModel):
 class EchonetSettings(BaseModel):
     # Common
     maker_code: str = "000106" # 3 bytes hex
-    
+
     # Identification Numbers
-    node_profile_id: str = "FE00000000000000000000000000000000" 
-    wifi_devices: list[str] = ["solar", "battery"] # Default enabled devices
+    node_profile_id: str = "FE00000000000000000000000000000000"
+    wifi_devices: list[str] = ["solar", "battery", "fuel_cell"] # Default enabled devices
     solar_id: str        = "FE00000000000000000000000000000200"
     battery_id: str      = "FE00000000000000000000000000000300"
     water_heater_id: str = "FE00000000000000000000000000000400"
     smart_meter_id: str  = "FE00000000000000000000000000000100"
-    
+
     # Device Specific Defaults
     battery_rated_capacity_wh: float = 14000.0
     battery_charge_power_w: float = 1000.0
@@ -53,6 +53,9 @@ class EchonetSettings(BaseModel):
     ac_power_w: float = 500.0  # 自動/冷房/暖房/除湿 共通消費電力 (W)
     # Instantaneous Water Heater (0x0272)
     instant_water_heater_id: str = "FE00000000000000000000000000000700"
+    # Fuel Cell (0x027C)
+    fuel_cell_id: str = "FE00000000000000000000000000000800"
+    fuel_cell_rated_power_w: float = 700.0
 
 class SimulationSettings(BaseModel):
     update_interval_sec: float = 1.0
@@ -68,9 +71,9 @@ class Settings(BaseSettings):
     def load_from_yaml(cls, default_path: str = "config/default_config.yaml") -> "Settings":
         # Start with internal defaults (Pydantic fields)
         # Note: If default_config.yaml exists, we should load it.
-        
+
         final_data = {}
-        
+
         # 1. Load Defaults from YAML
         if os.path.exists(default_path):
             try:
@@ -89,13 +92,13 @@ class Settings(BaseSettings):
             try:
                 with open(user_path, 'r', encoding='utf-8') as f:
                     user_data = yaml.safe_load(f) or {}
-                    
+
                     _deep_update(final_data, user_data)
                     # print(f"DEBUG: Loaded user settings from {user_path}")
             except Exception as e:
                 print(f"Failed to load user settings: {e}")
                 pass
-        
+
         # 3. Create Instance (Pydantic will treat dict keys as fields, missing keys use class defaults)
         # We need to handle nested models. Pydantic accepts nested dicts.
         return cls(**final_data)

@@ -2,7 +2,7 @@ import struct
 from typing import Optional
 from src.config.settings import settings
 from .echonet import EchonetObjectInterface
-from .models import Solar, Battery, SmartMeter, ElectricWaterHeater, V2H, AirConditioner, InstantWaterHeater
+from .models import Solar, Battery, SmartMeter, ElectricWaterHeater, V2H, AirConditioner, InstantWaterHeater, FuelCell
 from src.core.smart_meter_consts import SMART_METER_STATIC_PROPS
 from src.core.solar_consts import SOLAR_STATIC_PROPS
 from src.core.battery_consts import BATTERY_STATIC_PROPS
@@ -10,6 +10,7 @@ from src.core.water_heater_consts import WATER_HEATER_STATIC_PROPS
 from src.core.v2h_consts import V2H_STATIC_PROPS
 from src.core.aircon_consts import AIRCON_STATIC_PROPS
 from src.core.instant_water_heater_consts import INSTANT_WH_STATIC_PROPS
+from src.core.fuel_cell_consts import FUEL_CELL_STATIC_PROPS
 
 class BaseAdapter(EchonetObjectInterface):
     def __init__(self, config_id: str = None):
@@ -19,7 +20,7 @@ class BaseAdapter(EchonetObjectInterface):
         # ECHONET Lite Property Map Format
         # If count < 16: Byte 1 = count, Bytes 2..n = EPCs
         # If count >= 16: Byte 1 = count, Bytes 2..17 = Bitmap (EPC 0x80-0x87, ... 0xF8-0xFF)
-        
+
         count = len(epcs)
         if count < 16:
             return bytes([count] + epcs)
@@ -46,7 +47,7 @@ class BaseAdapter(EchonetObjectInterface):
             # 3 bytes
             try:
                 code_int = int(settings.echonet.maker_code, 16)
-                return struct.pack(">I", code_int)[1:] 
+                return struct.pack(">I", code_int)[1:]
             except:
                 return b'\x00\x00\x00'
         elif epc == 0x83: # Identification Number
@@ -56,14 +57,14 @@ class BaseAdapter(EchonetObjectInterface):
             except:
                 pass
             return b'\xFE' + b'\x00'*16
-            
+
         elif epc == 0x9D: # Status Change Announcement Property Map
             return self._build_property_map([0x80, 0x88])
         elif epc == 0x9E: # Set Property Map
-            return self._build_property_map([0x80]) 
+            return self._build_property_map([0x80])
         elif epc == 0x9F: # Get Property Map
             return self._build_property_map(self._get_supported_epcs())
-        
+
         return None
 
     def set_property(self, epc: int, data: bytes) -> bool:
@@ -91,7 +92,7 @@ class NodeProfileAdapter(BaseAdapter):
         elif epc == 0x82: return b'\x01\x0A\x01\x00'
         elif epc == 0xD5 or epc == 0xD6:
             return self._get_instance_list()
-        
+
         return super().get_property(epc)
 
     def _get_instance_list(self) -> bytes:
@@ -106,7 +107,7 @@ class SmartMeterAdapter(BaseAdapter):
     def __init__(self, device: SmartMeter):
         super().__init__(settings.echonet.smart_meter_id)
         self.device = device
-        
+
     def _get_supported_epcs(self) -> list[int]:
         base = super()._get_supported_epcs()
         # Merge static props keys with dynamic props
@@ -117,17 +118,17 @@ class SmartMeterAdapter(BaseAdapter):
 
     def get_property(self, epc: int) -> Optional[bytes]:
         d = self.device
-        
+
         # 1. Dynamic Measurement Values (Priority: Simulation Model)
         # These must reflect the current simulation state, overriding static data if any
         if epc == 0xE7: # Instantaneous Electric Power (W)
             val = int(d.instant_current_power)
             return struct.pack(">i", val)
-            
+
         elif epc == 0xE0: # Cumulative Amount (Buy)
             val = int(d.cumulative_power_buy_kwh)
             return struct.pack(">L", min(val, 0xFFFFFFFF))
-            
+
         elif epc == 0xE3: # Cumulative Amount (Sell)
             val = int(d.cumulative_power_sell_kwh)
             return struct.pack(">L", min(val, 0xFFFFFFFF))
@@ -137,12 +138,12 @@ class SmartMeterAdapter(BaseAdapter):
         # FIX: Force use of settings for Maker Code (0x8A) and ID (0x83) even if present in static props
         if epc == 0x8A or epc == 0x83:
             return super().get_property(epc)
-            
+
         if epc in SMART_METER_STATIC_PROPS:
             return SMART_METER_STATIC_PROPS[epc]
 
         # 3. Fallback to Settings/Defaults (e.g. Status 80 if not in static)
-        if epc == 0x80: 
+        if epc == 0x80:
             return b'\x30'
 
 
@@ -152,7 +153,7 @@ class SolarAdapter(BaseAdapter):
     def __init__(self, device: Solar):
         super().__init__(settings.echonet.solar_id)
         self.device = device
-        
+
     def _get_supported_epcs(self) -> list[int]:
         base = super()._get_supported_epcs()
         # Merge static props keys with dynamic props
@@ -163,19 +164,19 @@ class SolarAdapter(BaseAdapter):
 
     def get_property(self, epc: int) -> Optional[bytes]:
         d = self.device
-        
+
         # 1. Dynamic Measurement Values
         if epc == 0xE0: # Instantaneous Power Generation (W)
             # User JSON has 2 bytes [0,0]. We override with dynamic value.
             val = int(d.instant_generation_power)
             return struct.pack(">H", min(val, 65535))
-            
+
         elif epc == 0xE1: # Cumulative Generation
-            # User JSON has 4 bytes. 
+            # User JSON has 4 bytes.
             val = int(d.cumulative_generation_kwh * 1000) # Assuming 0.001kWh unit? Or 1?
             # User JSON 225 data: [0,2,39,247] => 147447. If unit 0.001 -> 147kWh. Plausible.
             return struct.pack(">L", min(val, 0xFFFFFFFF))
-            
+
         # 2. Static Properties
         # FIX: Force use of settings for Maker Code (0x8A) and ID (0x83)
         if epc == 0x8A or epc == 0x83:
@@ -185,17 +186,17 @@ class SolarAdapter(BaseAdapter):
             return SOLAR_STATIC_PROPS[epc]
 
         # 3. Fallback
-        if epc == 0x80: 
+        if epc == 0x80:
             return b'\x30' if d.is_running else b'\x31'
 
-            
+
         return super().get_property(epc)
 
 class BatteryAdapter(BaseAdapter):
     def __init__(self, device: Battery):
         super().__init__(settings.echonet.battery_id)
         self.device = device
-        
+
     def _get_supported_epcs(self) -> list[int]:
         base = super()._get_supported_epcs()
         # Merge static props keys with dynamic props
@@ -207,9 +208,9 @@ class BatteryAdapter(BaseAdapter):
 
     def get_property(self, epc: int) -> Optional[bytes]:
         d = self.device
-        
+
         # 1. Dynamic Measurement Values
-        if epc == 0xE4: # Remaining stored electricity 3 (SOC %) 
+        if epc == 0xE4: # Remaining stored electricity 3 (SOC %)
             # 0-100%, 1 byte
             val = int(d.soc)
             return struct.pack("B", val)
@@ -245,7 +246,7 @@ class BatteryAdapter(BaseAdapter):
             # 現在の放電可能電力量
             val = int(d.rated_capacity_wh * d.soc / 100.0)
             return struct.pack(">L", min(val, 0xFFFFFFFF))
-            
+
         elif epc == 0xA8: # AC cumulative charging electric energy (Wh)
             val = int(d.cumulative_charge_wh)
             return struct.pack(">L", min(val, 0xFFFFFFFF))
@@ -266,13 +267,13 @@ class BatteryAdapter(BaseAdapter):
 
         elif epc == 0xDA: # Operation Mode Setting
             return bytes([d.operation_mode])
-        
+
         elif epc == 0xCF: # Working Operation Status
             # 自動(0x46)のときは運転動作状態(0xCF)は待機(0x44)として応答する
             if d.operation_mode == 0x46:
                 return b'\x44'
             return bytes([d.operation_mode])
-        
+
         elif epc == 0xD3: # Instantaneous Charge/Discharge Power
             # 4 bytes Signed Int (W). Positive: Charge, Negative: Discharge
             val = 0
@@ -284,7 +285,7 @@ class BatteryAdapter(BaseAdapter):
         if epc == 0x8A or epc == 0x83: # FIX: Force use of settings for Maker Code and ID
             return super().get_property(epc)
 
-        if epc == 0x80: 
+        if epc == 0x80:
             # Status: ON (0x30) if running/charging/discharging, OFF (0x31) otherwise.
             status = b'\x30' if (d.is_running or d.is_charging or d.is_discharging) else b'\x31'
             return status
@@ -292,14 +293,14 @@ class BatteryAdapter(BaseAdapter):
         if epc in BATTERY_STATIC_PROPS:
             # If D3 is in static, we override it above.
             return BATTERY_STATIC_PROPS[epc]
-        
+
         # 3. Fallback
 
 
 
 
         return super().get_property(epc)
-        
+
     def set_property(self, epc: int, data: bytes) -> bool:
         if epc == 0x80:
             if data == b'\x30': self.device.is_running = True
@@ -344,19 +345,19 @@ class ElectricWaterHeaterAdapter(BaseAdapter):
 
     def get_property(self, epc: int) -> Optional[bytes]:
         d = self.device
-        
+
         # 1. Dynamic Values
         if epc == 0x80: # Status
             return b'\x30' if d.is_running else b'\x31'
-            
+
         elif epc == 0xB0: # Auto Setting
             # 0x41: Auto, 0x42: Manual Start, 0x43: Manual Stop
             return bytes([d.auto_setting])
-            
+
         elif epc == 0xB2: # Heating Status
             # 0x41: Heating, 0x42: Not Heating (as per request)
             return b'\x41' if d.is_heating else b'\x42'
-            
+
         elif epc == 0xE1: # Remaining Hot Water
             # User request: "raw value"
             # It seems user treats 0xE1 as a number corresponding to digits. 10digits/hour.
@@ -403,16 +404,16 @@ class ElectricWaterHeaterAdapter(BaseAdapter):
                 # But immediate state change is requested?
                 # "When 0xB0 is ... 0x43, ... 0xE1 decreases..." -> Engines job.
                 # "When 0xB0 is ... 0x42, ... 0xE1 increases..."
-                
+
                 # Immediate reaction to Set:
                 self.device.auto_setting = val
                 if val == 0x42: # Manual Start
                      self.device.is_heating = True
                 elif val == 0x43 or val == 0x41: # Manual Stop
                      self.device.is_heating = False
-                     
+
                 return True
-                
+
         elif epc == 0xE3: # Bath Operation Status
             self.device.e3_bath_operation_status = data[0]
             return True
@@ -707,4 +708,53 @@ class AirConditionerAdapter(BaseAdapter):
             if data:
                 d.air_flow_volume = data[0]
                 return True
+        return super().set_property(epc, data)
+
+class FuelCellAdapter(BaseAdapter):
+    def __init__(self, device: FuelCell):
+        super().__init__(settings.echonet.fuel_cell_id)
+        self.device = device
+
+    def _get_supported_epcs(self) -> list[int]:
+        base = super()._get_supported_epcs()
+        dynamic_epcs = [0x80, 0xCB, 0xC4, 0xC5]
+        static_epcs = list(FUEL_CELL_STATIC_PROPS.keys())
+        return sorted(list(set(base + dynamic_epcs + static_epcs)))
+
+    def get_property(self, epc: int) -> Optional[bytes]:
+        d = self.device
+
+        # 1. Dynamic values
+        if epc == 0x80:
+            return b'\x30' if d.is_running else b'\x31'
+
+        elif epc == 0xCB:  # 発電動作状態 (Power generation status)
+            return bytes([d.power_generation_setting])
+
+        elif epc == 0xC4:  # 瞬時発電電力計測値 (W) - unsigned 16bit
+            val = int(d.instant_generation_power)
+            return struct.pack(">H", min(val, 0xFFFF))
+
+        elif epc == 0xC5:  # 積算発電電力量計測値 (Wh) - unsigned 32bit
+            val = int(d.cumulative_generation_wh)
+            return struct.pack(">L", min(val, 0xFFFFFFFF))
+
+        # 2. Force settings for Maker Code and ID
+        if epc == 0x8A or epc == 0x83:
+            return super().get_property(epc)
+
+        # 3. Static properties
+        if epc in FUEL_CELL_STATIC_PROPS:
+            return FUEL_CELL_STATIC_PROPS[epc]
+
+        return super().get_property(epc)
+
+    def set_property(self, epc: int, data: bytes) -> bool:
+        d = self.device
+        if epc == 0x80:
+            if data == b'\x30':
+                d.is_running = True
+            elif data == b'\x31':
+                d.is_running = False
+            return True
         return super().set_property(epc, data)
