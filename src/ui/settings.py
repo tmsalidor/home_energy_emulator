@@ -5,21 +5,21 @@ import os
 def render():
     with ui.column().classes('w-full mx-auto'):
         ui.label('Configuration').classes('text-2xl font-bold mb-4')
-        
+
         # Action Buttons Row (Placed at top)
         actions_row = ui.row().classes('w-full mb-4')
-        
+
         # --- Settings Container (Grid Layout or Flex) ---
         with ui.row().classes('w-full items-start wrap gap-4'):
-            
+
             # 1. Wi-SUN Settings Card
             with ui.card().classes('w-96 p-4'):
                 ui.label('Wi-SUN Settings').classes('text-lg font-bold mb-2')
                 ui.label('Requires Restart').classes('text-xs text-red-500 mb-2')
-                
-                id_input = ui.input('B-Route ID', value=settings.communication.b_route_id, 
+
+                id_input = ui.input('B-Route ID', value=settings.communication.b_route_id,
                                     placeholder='32 chars hex').classes('w-full')
-                pwd_input = ui.input('B-Route Password', value=settings.communication.b_route_password, 
+                pwd_input = ui.input('B-Route Password', value=settings.communication.b_route_password,
                                      placeholder='12 chars').classes('w-full')
 
             # 1.5 Wi-Fi Settings Card (New)
@@ -36,20 +36,21 @@ def render():
                 chk_solar = ui.checkbox('Solar Power (0x0279)', value='solar' in wifi_devs).classes('w-full')
                 chk_battery = ui.checkbox('Storage Battery (0x027D)', value='battery' in wifi_devs).classes('w-full')
                 chk_wh = ui.checkbox('Elec. Water Heater (0x026B)', value='water_heater' in wifi_devs).classes('w-full')
-                chk_iwh = ui.checkbox('Inst. Water Heater (0x0272)', value='instant_water_heater' in wifi_devs).classes('w-full')
                 chk_v2h = ui.checkbox('EV Charger/Discharger V2H (0x027E)', value='v2h' in wifi_devs).classes('w-full')
                 chk_ac = ui.checkbox('Air Conditioner (0x0130)', value='air_conditioner' in wifi_devs).classes('w-full')
+                chk_iwh = ui.checkbox('Inst. Water Heater (0x0272)', value='instant_water_heater' in wifi_devs).classes('w-full')
                 chk_fc = ui.checkbox('Fuel Cell (0x027C)', value='fuel_cell' in wifi_devs).classes('w-full')
+                ui.label('※ Fuel Cell 有効化のときは Inst. Water Heater も有効にし、他はすべて無効にすること').classes('text-xs text-orange-500 ml-6')
 
             # 2. ECHONET Lite Property Settings
             with ui.column().classes('flex-1 min-w-[300px] gap-4'):
-                
+
                 # Common Properties
                 with ui.card().classes('w-full p-4'):
                     ui.label('ECHONET Common').classes('text-lg font-bold mb-2')
                     maker_input = ui.input('Maker Code (0x8A)', value=settings.echonet.maker_code,
                                            placeholder='e.g. 000000').classes('w-full')
-                
+
                 # Node Profile
                 with ui.card().classes('w-full p-4'):
                     ui.label('Node Profile (0x0EF001)').classes('text-lg font-bold mb-2')
@@ -67,7 +68,7 @@ def render():
                     ui.label('Solar Power (0x027901)').classes('text-lg font-bold mb-2')
                     solar_id_input = ui.input('Identification Number (0x83)', value=settings.echonet.solar_id,
                                               placeholder='17 bytes hex').classes('w-full')
-                                              
+
                 # Battery
                 with ui.card().classes('w-full p-4'):
                     ui.label('Storage Battery (0x027D01)').classes('text-lg font-bold mb-2')
@@ -132,7 +133,7 @@ def render():
         def save_settings():
             settings.communication.b_route_id = id_input.value
             settings.communication.b_route_password = pwd_input.value
-            
+
             # Save Wi-Fi Devices
             new_wifi_devs = []
             if chk_sm.value: new_wifi_devs.append('smart_meter')
@@ -144,7 +145,7 @@ def render():
             if chk_ac.value: new_wifi_devs.append('air_conditioner')
             if chk_fc.value: new_wifi_devs.append('fuel_cell')
             settings.echonet.wifi_devices = new_wifi_devs
-            
+
             settings.echonet.maker_code = maker_input.value
             settings.echonet.node_profile_id = np_id_input.value
             settings.echonet.solar_id = solar_id_input.value
@@ -168,7 +169,7 @@ def render():
 
             settings.save_to_yaml()
             ui.notify('Settings saved. Please restart the application.', type='positive')
-        
+
         def reset_settings():
             user_path = "config/user_settings.yaml"
             if os.path.exists(user_path):
