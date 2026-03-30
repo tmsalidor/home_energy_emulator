@@ -39,7 +39,19 @@ def render():
                 chk_v2h = ui.checkbox('EV Charger/Discharger V2H (0x027E)', value='v2h' in wifi_devs).classes('w-full')
                 chk_ac = ui.checkbox('Air Conditioner (0x0130)', value='air_conditioner' in wifi_devs).classes('w-full')
                 chk_iwh = ui.checkbox('Inst. Water Heater (0x0272)', value='instant_water_heater' in wifi_devs).classes('w-full')
-                chk_fc = ui.checkbox('Fuel Cell (0x027C)', value='fuel_cell' in wifi_devs).classes('w-full')
+
+                def on_fuel_cell_change(e):
+                    if e.value:
+                        chk_sm.set_value(False)
+                        chk_solar.set_value(False)
+                        chk_battery.set_value(False)
+                        chk_wh.set_value(False)
+                        chk_v2h.set_value(False)
+                        chk_ac.set_value(False)
+                        chk_iwh.set_value(True)
+
+                chk_fc = ui.checkbox('Fuel Cell (0x027C)', value='fuel_cell' in wifi_devs,
+                                     on_change=on_fuel_cell_change).classes('w-full')
                 ui.label('※ Fuel Cell 有効化のときは Inst. Water Heater も有効にし、他はすべて無効にすること').classes('text-xs text-orange-500 ml-6')
 
             # 2. ECHONET Lite Property Settings
