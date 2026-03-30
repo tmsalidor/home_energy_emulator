@@ -1,11 +1,12 @@
 import time
 import logging
-from .models import SmartMeter, Solar, Battery, DeviceType, ElectricWaterHeater, V2H, AirConditioner, InstantWaterHeater
+from .models import SmartMeter, Solar, Battery, DeviceType, ElectricWaterHeater, V2H, AirConditioner, InstantWaterHeater, FuelCell
 
 logger = logging.getLogger(__name__)
 
 from .battery_consts import BATTERY_STATIC_PROPS
 from .water_heater_consts import WATER_HEATER_STATIC_PROPS
+from .fuel_cell_consts import FUEL_CELL_STATIC_PROPS
 import struct
 from src.config.settings import settings
 
@@ -19,11 +20,12 @@ class SimulationEngine:
         self.instant_water_heater = InstantWaterHeater(device_id="iwh_01")
         self.v2h = V2H(device_id="v2h_01")
         self.air_conditioner = AirConditioner(device_id="ac_01")
-        
+        self.fuel_cell = FuelCell(device_id="fc_01")
+
         # Simulation State
         self.current_load_w: float = 500.0  # Base household load
         self.last_update_time: float = time.time()
-        
+
         # Scenario Data
         self.use_scenario = True
         self.scenario_data = [] # List of {'time_sec': int, 'load': float, 'solar': float}
@@ -33,10 +35,12 @@ class SimulationEngine:
         except Exception:
             _scenario_path = "data/scenarios/default_scenario.csv"
         self._load_scenario(_scenario_path)
-        
+
         # Initialize properties from settings and consts
         self._init_device_settings()
-        
+
+        self._init_fuel_cell_settings()
+
         logger.info("Simulation Engine Initialized")
 
     def _init_device_settings(self):
@@ -94,13 +98,43 @@ class SimulationEngine:
         except Exception as e:
             logger.error(f"Failed to load V2H settings: {e}")
 
+    def _init_fuel_cell_settings(self):
+        """燃料電池の初期値をconstsとsettingsから設定する"""
+        # 1. 定格発電出力 (0xC2) を consts から読み込む
+        if 0xC2 in FUEL_CELL_STATIC_PROPS:
+            try:
+                data = FUEL_CELL_STATIC_PROPS[0xC2]
+                val = struct.unpack(">H", data)[0]
+                self.fuel_cell.rated_power_w = float(val)
+                logger.info(f"Fuel Cell rated power initialized from 0xC2: {val} W")
+            except Exception as e:
+                logger.error(f"Failed to parse Fuel Cell 0xC2: {e}")
+
+        # 2. 系統連系状態 (0xD0) を consts から読み込む
+        if 0xD0 in FUEL_CELL_STATIC_PROPS:
+            try:
+                val = FUEL_CELL_STATIC_PROPS[0xD0][0]
+                self.fuel_cell.system_interconnection_status = val
+                logger.info(f"Fuel Cell system interconnection status from 0xD0: 0x{val:02X}")
+            except Exception as e:
+                logger.error(f"Failed to parse Fuel Cell 0xD0: {e}")
+
+        # 3. settings で上書き
+        try:
+            pw = settings.echonet.fuel_cell_rated_power_w
+            if pw > 0:
+                self.fuel_cell.rated_power_w = pw
+                logger.info(f"Fuel Cell rated power overridden by settings: {pw} W")
+        except Exception as e:
+            logger.error(f"Failed to load Fuel Cell settings: {e}")
+
     def _load_scenario(self, filepath: str):
         import csv
         import os
         if not os.path.exists(filepath):
             logger.warning(f"Scenario file not found: {filepath}")
             return
-            
+
         try:
             with open(filepath, 'r') as f:
                 reader = csv.DictReader(f)
@@ -127,40 +161,40 @@ class SimulationEngine:
     def _get_current_scenario_values(self):
         if not self.scenario_data:
             return 500.0, 0.0 # Default fallback
-            
+
         # Get current time of day in seconds
         now_struct = time.localtime()
         current_sec = now_struct.tm_hour * 3600 + now_struct.tm_min * 60 + now_struct.tm_sec
-        
+
         # Find interval
         prev_point = self.scenario_data[-1]
         next_point = self.scenario_data[0]
-        
+
         for point in self.scenario_data:
             if point['time_sec'] > current_sec:
                 next_point = point
                 break
             prev_point = point
-            
+
         # Linear Interpolation
         t1 = prev_point['time_sec']
         t2 = next_point['time_sec']
-        
+
         if t1 == t2: return prev_point['load'], prev_point['solar']
-        
+
         # Wrap around midnight case
         if t2 < t1:
              # e.g. t1=23:00 (82800), t2=06:00 (21600). current=02:00 (7200).
              # Shift t2 and current by +24h for calculation
              t2 += 86400
              if current_sec < t1: current_sec += 86400
-        
+
         ratio = (current_sec - t1) / (t2 - t1)
         ratio = max(0.0, min(1.0, ratio))
-        
+
         load = prev_point['load'] + (next_point['load'] - prev_point['load']) * ratio
         solar = prev_point['solar'] + (next_point['solar'] - prev_point['solar']) * ratio
-        
+
         return load, solar
 
     def update_simulation(self):
@@ -171,16 +205,16 @@ class SimulationEngine:
         now = time.time()
         dt = now - self.last_update_time
         self.last_update_time = now
-        
+
         if self.use_scenario:
             s_load, s_solar = self._get_current_scenario_values()
-            # Override only if not manually overridden? 
+            # Override only if not manually overridden?
             # For emulator, scenario usually drives unless manual override.
             # Let's overwrite for now, manual controls effectively offset or disable scenario logic?
             # Or simple: Scenario drives base values.
             self.current_load_w = s_load
             self.solar.instant_generation_power = s_solar
-        
+
         # 1. Update Battery State (SOC Logic)
         self._update_battery(dt)
 
@@ -214,19 +248,24 @@ class SimulationEngine:
         # Air Conditioner Load
         p_ac = self.air_conditioner.instant_power_w
 
-        p_grid = (p_load + p_charge + p_wh + p_v2h_charge + p_ac) - (p_solar + p_discharge + p_v2h_discharge)
-        
+        # 2.0 Update Fuel Cell (depends on current load balance)
+        self._update_fuel_cell(dt, p_load, p_charge, p_wh, p_v2h_charge, p_ac,
+                               p_solar, p_discharge, p_v2h_discharge)
+        p_fuel_cell = self.fuel_cell.instant_generation_power
+
+        p_grid = (p_load + p_charge + p_wh + p_v2h_charge + p_ac) - (p_solar + p_discharge + p_v2h_discharge + p_fuel_cell)
+
         self.smart_meter.instant_current_power = p_grid
-        
+
         # 3. Update Cumulative Values (Integration)
         # W * s / 3600 / 1000 = kWh
         kwh_increment_factor = dt / 3600.0 / 1000.0
-        
+
         if p_grid > 0:
             self.smart_meter.cumulative_power_buy_kwh += p_grid * kwh_increment_factor
         else:
             self.smart_meter.cumulative_power_sell_kwh += abs(p_grid) * kwh_increment_factor
-            
+
         self.solar.cumulative_generation_kwh += p_solar * kwh_increment_factor
 
     def _update_battery(self, dt: float):
@@ -234,7 +273,7 @@ class SimulationEngine:
         Handle battery SOC and guards.
         """
         bat = self.battery
-        
+
         # SOC Guard Logic
         if bat.soc >= 100.0:
             if bat.is_charging:
@@ -242,14 +281,14 @@ class SimulationEngine:
                 bat.operation_mode = 0x44
                 bat.is_charging = False
                 bat.instant_charge_power = 0.0
-                
+
         if bat.soc <= 0.0:
             if bat.is_discharging:
                 logger.info("Battery empty. Stopping discharge.")
                 bat.operation_mode = 0x44
                 bat.is_discharging = False
                 bat.instant_discharge_power = 0.0
-                
+
         # Calculate Energy Flow
         # Wh change
         energy_delta_wh = 0.0
@@ -261,13 +300,13 @@ class SimulationEngine:
             wh_step = bat.instant_discharge_power * (dt / 3600.0)
             energy_delta_wh -= wh_step
             bat.cumulative_discharge_wh += wh_step
-            
+
         # Update SOC
         # soc_delta = (Wh change / Capacity) * 100
         if bat.rated_capacity_wh > 0:
             soc_delta = (energy_delta_wh / bat.rated_capacity_wh) * 100.0
             bat.soc += soc_delta
-            
+
         # Clamp SOC
         bat.soc = max(0.0, min(100.0, bat.soc))
 
@@ -281,21 +320,21 @@ class SimulationEngine:
 
         # Decrease when stopped or auto (10 digit/hour)
         # Increase when heating (1 digit/minute = 60 digit/hour)
-        
+
         # 0xB0 = 0x43 (Manual Stop) or 0x41 (Auto) -> Decrease 10/hour
         if wh.auto_setting == 0x43 or wh.auto_setting == 0x41:
             wh.is_heating = False
             # Decrease 10 per hour => 10/3600 per second
             decay_rate = 10.0 / 3600.0
             wh.remaining_hot_water -= decay_rate * dt
-        
+
         # 0xB0 = 0x42 (Manual Start) -> Increase 1/minute
         elif wh.auto_setting == 0x42:
             wh.is_heating = True
             # Increase 60 per hour => 60/3600 per second = 1/60 per second
             fill_rate = 1.0 / 60.0
             wh.remaining_hot_water += fill_rate * dt
-            
+
             # Stop if full
             if wh.remaining_hot_water >= wh.tank_capacity:
                 wh.remaining_hot_water = float(wh.tank_capacity)
@@ -394,6 +433,38 @@ class SimulationEngine:
         p = self._get_aircon_power()
         ac.instant_power_w = p
         ac.cumulative_power_wh += p * (dt / 3600.0)
+
+    def _update_fuel_cell(self, dt: float,
+                          p_load: float, p_charge: float, p_wh: float,
+                          p_v2h_charge: float, p_ac: float,
+                          p_solar: float, p_discharge: float, p_v2h_discharge: float):
+        """
+        燃料電池のシミュレーションロジック
+
+        0xCB (power_generation_setting):
+          0x41: 発電動作 -> 発電する
+          0x42: 発電停止 -> 発電しない
+
+        0xD0 (system_interconnection_status):
+          0x00: 逆潮流可能 -> 定格出力まで自由に発電 (余剰は売電)
+          その他: 逆潮流不可 -> 自家消費分を超えて発電しない
+        """
+        fc = self.fuel_cell
+
+        if not fc.is_running or fc.power_generation_setting == 0x42:
+            fc.instant_generation_power = 0.0
+            return
+
+        if fc.system_interconnection_status == 0x00:
+            # 逆潮流可能: 定格出力まで発電
+            gen_w = fc.rated_power_w
+        else:
+            # 逆潮流不可: 現在の自家消費分 (燃料電池なしのネット買電量) を上限とする
+            net_consumption = (p_load + p_charge + p_wh + p_v2h_charge + p_ac) - (p_solar + p_discharge + p_v2h_discharge)
+            gen_w = max(0.0, min(fc.rated_power_w, net_consumption))
+
+        fc.instant_generation_power = gen_w
+        fc.cumulative_generation_wh += gen_w * (dt / 3600.0)
 
 
 # Global Singleton

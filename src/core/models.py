@@ -10,6 +10,7 @@ class DeviceType(str, Enum):
     INSTANT_WATER_HEATER = "instant_water_heater"
     V2H = "v2h"
     AIR_CONDITIONER = "air_conditioner"
+    FUEL_CELL = "fuel_cell"
 
 class BaseDevice(BaseModel):
     device_id: str
@@ -150,6 +151,27 @@ class AirConditioner(BaseDevice):
 
     # 積算消費電力量計測値 (0x85) [Wh] - エンジンで積算 (0.001 kWh単位 = 1 Wh)
     cumulative_power_wh: float = 0.0
+
+
+class FuelCell(BaseDevice):
+    device_type: Literal[DeviceType.FUEL_CELL] = DeviceType.FUEL_CELL
+
+    # 0xCB: 発電動作設定 (Power generation operation setting) - Settable
+    # 0x41: 発電動作, 0x42: 発電停止
+    power_generation_setting: int = 0x42
+
+    # 0xD0: 系統連系状態 (System interconnection status)
+    # 0x00: 逆潮流可能, 0x01: 逆潮流不可, 0x02: 独立運転
+    system_interconnection_status: int = 0x02
+
+    # 0xC4: 瞬時発電電力計測値 (W) - エンジンで計算
+    instant_generation_power: float = 0.0
+
+    # 0xC5: 積算発電電力量計測値 (Wh) - 起動時0クリア、動作中に積算
+    cumulative_generation_wh: float = 0.0
+
+    # 定格発電出力 (0xC2 から取得: 0x02BC = 700W)
+    rated_power_w: float = 700.0
 
 
 class V2H(BaseDevice):
