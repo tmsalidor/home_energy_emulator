@@ -32,7 +32,6 @@ echonet:
   - v2h
   - air_conditioner
   - instant_water_heater
-  - fuel_cell
 simulation:
   scenario_file: data/scenarios/default_scenario.csv
   update_interval_sec: 1.0
