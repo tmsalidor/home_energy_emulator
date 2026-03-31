@@ -129,6 +129,12 @@ def render():
                                                value=settings.echonet.ac_power_w,
                                                step=10).classes('w-full')
 
+                # Distribution Board Metering
+                with ui.card().classes('w-full p-4'):
+                    ui.label('Distribution Board (0x028701)').classes('text-lg font-bold mb-2')
+                    db_id_input = ui.input('Identification Number (0x83)', value=settings.echonet.distribution_board_id,
+                                           placeholder='17 bytes hex').classes('w-full')
+
                 # Instantaneous Water Heater
                 with ui.card().classes('w-full p-4'):
                     ui.label('Inst. Water Heater (0x027201)').classes('text-lg font-bold mb-2')
@@ -144,12 +150,6 @@ def render():
                                                value=settings.echonet.fuel_cell_rated_power_w,
                                                step=10).classes('w-full')
 
-                # Distribution Board Metering
-                with ui.card().classes('w-full p-4'):
-                    ui.label('Distribution Board (0x028701)').classes('text-lg font-bold mb-2')
-                    db_id_input = ui.input('Identification Number (0x83)', value=settings.echonet.distribution_board_id,
-                                           placeholder='17 bytes hex').classes('w-full')
-
         def save_settings():
             settings.communication.b_route_id = id_input.value
             settings.communication.b_route_password = pwd_input.value
@@ -160,11 +160,11 @@ def render():
             if chk_solar.value: new_wifi_devs.append('solar')
             if chk_battery.value: new_wifi_devs.append('battery')
             if chk_wh.value: new_wifi_devs.append('water_heater')
-            if chk_iwh.value: new_wifi_devs.append('instant_water_heater')
             if chk_v2h.value: new_wifi_devs.append('v2h')
             if chk_ac.value: new_wifi_devs.append('air_conditioner')
-            if chk_fc.value: new_wifi_devs.append('fuel_cell')
             if chk_db.value: new_wifi_devs.append('distribution_board')
+            if chk_iwh.value: new_wifi_devs.append('instant_water_heater')
+            if chk_fc.value: new_wifi_devs.append('fuel_cell')
             settings.echonet.wifi_devices = new_wifi_devs
 
             settings.echonet.maker_code = maker_input.value
