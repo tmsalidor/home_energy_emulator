@@ -52,7 +52,7 @@ def render():
                         chk_iwh.set_value(True)
                         chk_db.set_value(False)
 
-                chk_fc = uSi.checkbox('Fuel Cell (0x027C)', value='fuel_cell' in wifi_devs,
+                chk_fc = ui.checkbox('Fuel Cell (0x027C)', value='fuel_cell' in wifi_devs,
                                      on_change=on_fuel_cell_change).classes('w-full')
                 ui.label('※ Fuel Cell 有効化のときは Inst. Water Heater も有効にし、他はすべて無効にすること').classes('text-xs text-orange-500 ml-6')
 
