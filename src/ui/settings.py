@@ -38,6 +38,7 @@ def render():
                 chk_wh = ui.checkbox('Elec. Water Heater (0x026B)', value='water_heater' in wifi_devs).classes('w-full')
                 chk_v2h = ui.checkbox('EV Charger/Discharger V2H (0x027E)', value='v2h' in wifi_devs).classes('w-full')
                 chk_ac = ui.checkbox('Air Conditioner (0x0130)', value='air_conditioner' in wifi_devs).classes('w-full')
+                chk_db = ui.checkbox('Distribution Board (0x0287)', value='distribution_board' in wifi_devs).classes('w-full')
                 chk_iwh = ui.checkbox('Inst. Water Heater (0x0272)', value='instant_water_heater' in wifi_devs).classes('w-full')
 
                 def on_fuel_cell_change(e):
@@ -49,8 +50,9 @@ def render():
                         chk_v2h.set_value(False)
                         chk_ac.set_value(False)
                         chk_iwh.set_value(True)
+                        chk_db.set_value(False)
 
-                chk_fc = ui.checkbox('Fuel Cell (0x027C)', value='fuel_cell' in wifi_devs,
+                chk_fc = uSi.checkbox('Fuel Cell (0x027C)', value='fuel_cell' in wifi_devs,
                                      on_change=on_fuel_cell_change).classes('w-full')
                 ui.label('※ Fuel Cell 有効化のときは Inst. Water Heater も有効にし、他はすべて無効にすること').classes('text-xs text-orange-500 ml-6')
 
@@ -142,6 +144,12 @@ def render():
                                                value=settings.echonet.fuel_cell_rated_power_w,
                                                step=10).classes('w-full')
 
+                # Distribution Board Metering
+                with ui.card().classes('w-full p-4'):
+                    ui.label('Distribution Board (0x028701)').classes('text-lg font-bold mb-2')
+                    db_id_input = ui.input('Identification Number (0x83)', value=settings.echonet.distribution_board_id,
+                                           placeholder='17 bytes hex').classes('w-full')
+
         def save_settings():
             settings.communication.b_route_id = id_input.value
             settings.communication.b_route_password = pwd_input.value
@@ -156,6 +164,7 @@ def render():
             if chk_v2h.value: new_wifi_devs.append('v2h')
             if chk_ac.value: new_wifi_devs.append('air_conditioner')
             if chk_fc.value: new_wifi_devs.append('fuel_cell')
+            if chk_db.value: new_wifi_devs.append('distribution_board')
             settings.echonet.wifi_devices = new_wifi_devs
 
             settings.echonet.maker_code = maker_input.value
@@ -178,6 +187,7 @@ def render():
             settings.echonet.instant_water_heater_id = iwh_id_input.value
             settings.echonet.fuel_cell_id = fc_id_input.value
             settings.echonet.fuel_cell_rated_power_w = float(fc_power_input.value or 0)
+            settings.echonet.distribution_board_id = db_id_input.value
 
             settings.save_to_yaml()
             ui.notify('Settings saved. Please restart the application.', type='positive')

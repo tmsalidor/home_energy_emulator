@@ -2,7 +2,7 @@ import struct
 from typing import Optional
 from src.config.settings import settings
 from .echonet import EchonetObjectInterface
-from .models import Solar, Battery, SmartMeter, ElectricWaterHeater, V2H, AirConditioner, InstantWaterHeater, FuelCell
+from .models import Solar, Battery, SmartMeter, ElectricWaterHeater, V2H, AirConditioner, InstantWaterHeater, FuelCell, DistributionBoard
 from src.core.smart_meter_consts import SMART_METER_STATIC_PROPS
 from src.core.solar_consts import SOLAR_STATIC_PROPS
 from src.core.battery_consts import BATTERY_STATIC_PROPS
@@ -11,6 +11,7 @@ from src.core.v2h_consts import V2H_STATIC_PROPS
 from src.core.aircon_consts import AIRCON_STATIC_PROPS
 from src.core.instant_water_heater_consts import INSTANT_WH_STATIC_PROPS
 from src.core.fuel_cell_consts import FUEL_CELL_STATIC_PROPS
+from src.core.distribution_board_consts import DISTRIBUTION_BOARD_STATIC_PROPS
 
 class BaseAdapter(EchonetObjectInterface):
     def __init__(self, config_id: str = None):
@@ -759,5 +760,43 @@ class FuelCellAdapter(BaseAdapter):
                 d.is_running = True
             elif data == b'\x31':
                 d.is_running = False
+            return True
+        return super().set_property(epc, data)
+
+class DistributionBoardAdapter(BaseAdapter):
+    """分電盤メータリング (0x0287) アダプター"""
+
+    def __init__(self, device: DistributionBoard):
+        super().__init__(settings.echonet.distribution_board_id)
+        self.device = device
+
+    def _get_supported_epcs(self) -> list[int]:
+        base = super()._get_supported_epcs()
+        static_epcs = list(DISTRIBUTION_BOARD_STATIC_PROPS.keys())
+        return sorted(list(set(base + static_epcs)))
+
+    def get_property(self, epc: int) -> Optional[bytes]:
+        d = self.device
+
+        # Settings 優先プロパティ (0x8A: Maker Code, 0x83: Identification Number)
+        if epc in (0x8A, 0x83):
+            return super().get_property(epc)
+
+        # 動的プロパティ (フェーズ1: 動作状態のみ)
+        if epc == 0x80:
+            return b'\x30' if d.is_running else b'\x31'
+
+        # 静的プロパティ (フェーズ1: 全て固定値)
+        if epc in DISTRIBUTION_BOARD_STATIC_PROPS:
+            return DISTRIBUTION_BOARD_STATIC_PROPS[epc]
+
+        return super().get_property(epc)
+
+    def set_property(self, epc: int, data: bytes) -> bool:
+        if epc == 0x80:
+            if data == b'\x30':
+                self.device.is_running = True
+            elif data == b'\x31':
+                self.device.is_running = False
             return True
         return super().set_property(epc, data)

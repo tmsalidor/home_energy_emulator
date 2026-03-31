@@ -11,6 +11,7 @@ class DeviceType(str, Enum):
     V2H = "v2h"
     AIR_CONDITIONER = "air_conditioner"
     FUEL_CELL = "fuel_cell"
+    DISTRIBUTION_BOARD = "distribution_board"
 
 class BaseDevice(BaseModel):
     device_id: str
@@ -207,3 +208,10 @@ class V2H(BaseDevice):
     current_charge_w: float = 0.0
     # 今サイクルの実際の放電電力 [W]（放電中のみ正値）
     current_discharge_w: float = 0.0
+
+
+class DistributionBoard(BaseDevice):
+    device_type: Literal[DeviceType.DISTRIBUTION_BOARD] = DeviceType.DISTRIBUTION_BOARD
+
+    # フェーズ1: 全プロパティは固定値 (distribution_board_consts.py) から返す
+    # フェーズ2: チャンネル別の動的データフィールドを追加予定

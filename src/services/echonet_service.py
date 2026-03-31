@@ -4,7 +4,7 @@ import socket
 import struct
 from src.config.settings import settings
 from src.core.echonet import wifi_echonet_ctrl, wisun_echonet_ctrl
-from src.core.adapters import SolarAdapter, BatteryAdapter, NodeProfileAdapter, SmartMeterAdapter, ElectricWaterHeaterAdapter, V2HAdapter, AirConditionerAdapter, InstantWaterHeaterAdapter, FuelCellAdapter
+from src.core.adapters import SolarAdapter, BatteryAdapter, NodeProfileAdapter, SmartMeterAdapter, ElectricWaterHeaterAdapter, V2HAdapter, AirConditionerAdapter, InstantWaterHeaterAdapter, FuelCellAdapter, DistributionBoardAdapter
 from src.core.wisun import wisun_manager
 from src.core.engine import engine
 
@@ -56,6 +56,9 @@ async def start_echonet_service():
     if 'fuel_cell' in enabled_devs:
         wifi_instances.append((0x02, 0x7C, 0x01))
 
+    if 'distribution_board' in enabled_devs:
+        wifi_instances.append((0x02, 0x87, 0x01))
+
     wifi_echonet_ctrl.register_instance(0x0E, 0xF0, 0x01, NodeProfileAdapter(wifi_instances))
     
     if 'solar' in enabled_devs:
@@ -82,6 +85,9 @@ async def start_echonet_service():
 
     if 'fuel_cell' in enabled_devs:
         wifi_echonet_ctrl.register_instance(0x02, 0x7C, 0x01, FuelCellAdapter(engine.fuel_cell, engine.instant_water_heater))
+
+    if 'distribution_board' in enabled_devs:
+        wifi_echonet_ctrl.register_instance(0x02, 0x87, 0x01, DistributionBoardAdapter(engine.distribution_board))
     
     # --- 2. Wi-SUN Controller Setup (Smart Meter) ---
     # Node Profile for Wi-SUN: Smart Meter(0288)

@@ -1,6 +1,6 @@
 import time
 import logging
-from .models import SmartMeter, Solar, Battery, DeviceType, ElectricWaterHeater, V2H, AirConditioner, InstantWaterHeater, FuelCell
+from .models import SmartMeter, Solar, Battery, DeviceType, ElectricWaterHeater, V2H, AirConditioner, InstantWaterHeater, FuelCell, DistributionBoard
 
 logger = logging.getLogger(__name__)
 
@@ -21,6 +21,7 @@ class SimulationEngine:
         self.v2h = V2H(device_id="v2h_01")
         self.air_conditioner = AirConditioner(device_id="ac_01")
         self.fuel_cell = FuelCell(device_id="fc_01")
+        self.distribution_board = DistributionBoard(device_id="db_01")
 
         # Simulation State
         self.current_load_w: float = 500.0  # Base household load
