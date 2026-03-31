@@ -336,6 +336,9 @@ class SimulationEngine:
             fill_rate = 1.0 / 60.0
             wh.remaining_hot_water += fill_rate * dt
 
+            # 積算消費電力量を追跡 (分電盤メータリング CH1 用)
+            wh.cumulative_power_wh += wh.heating_power_w * (dt / 3600.0)
+
             # Stop if full
             if wh.remaining_hot_water >= wh.tank_capacity:
                 wh.remaining_hot_water = float(wh.tank_capacity)

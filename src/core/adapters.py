@@ -764,29 +764,144 @@ class FuelCellAdapter(BaseAdapter):
         return super().set_property(epc, data)
 
 class DistributionBoardAdapter(BaseAdapter):
-    """分電盤メータリング (0x0287) アダプター"""
+    """分電盤メータリング (0x0287) アダプター
 
-    def __init__(self, device: DistributionBoard):
+    主幹: スマートメーター (売電/買電)
+    CH1: エコキュート (電気温水器)
+    CH2: エアコン
+    CH3-CH8: 未使用 (ゼロ)
+    """
+
+    def __init__(self, device: DistributionBoard,
+                 smart_meter: SmartMeter = None,
+                 water_heater: ElectricWaterHeater = None,
+                 air_conditioner: AirConditioner = None):
         super().__init__(settings.echonet.distribution_board_id)
         self.device = device
+        self.smart_meter = smart_meter
+        self.water_heater = water_heater
+        self.air_conditioner = air_conditioner
 
     def _get_supported_epcs(self) -> list[int]:
         base = super()._get_supported_epcs()
+        # 動的 EPC (静的テーブルに含まれないもの)
+        dynamic_epcs = [0xB3, 0xB7, 0xC0, 0xC1, 0xC6, 0xC7]
         static_epcs = list(DISTRIBUTION_BOARD_STATIC_PROPS.keys())
-        return sorted(list(set(base + static_epcs)))
+        return sorted(list(set(base + dynamic_epcs + static_epcs)))
+
+    def _get_wh_cumulative_unit(self) -> int:
+        """エコキュートの積算消費電力量を 0.01kWh 単位に変換 (Wh -> 0.01kWh = ÷10)"""
+        if self.water_heater:
+            return int(self.water_heater.cumulative_power_wh / 10.0)
+        return 0
+
+    def _get_ac_cumulative_unit(self) -> int:
+        """エアコンの積算消費電力量を 0.01kWh 単位に変換 (Wh -> 0.01kWh = ÷10)"""
+        if self.air_conditioner:
+            return int(self.air_conditioner.cumulative_power_wh / 10.0)
+        return 0
+
+    def _get_wh_instant_power(self) -> int:
+        """エコキュートの瞬時消費電力 (W)"""
+        if self.water_heater and self.water_heater.is_heating:
+            return int(self.water_heater.heating_power_w)
+        return 0
+
+    def _get_ac_instant_power(self) -> int:
+        """エアコンの瞬時消費電力 (W)"""
+        if self.air_conditioner:
+            return int(self.air_conditioner.instant_power_w)
+        return 0
 
     def get_property(self, epc: int) -> Optional[bytes]:
         d = self.device
+        sm = self.smart_meter
 
         # Settings 優先プロパティ (0x8A: Maker Code, 0x83: Identification Number)
         if epc in (0x8A, 0x83):
             return super().get_property(epc)
 
-        # 動的プロパティ (フェーズ1: 動作状態のみ)
-        if epc == 0x80:
+        # --- 動的プロパティ ---
+
+        if epc == 0x80:  # 動作状態
             return b'\x30' if d.is_running else b'\x31'
 
-        # 静的プロパティ (フェーズ1: 全て固定値)
+        # === 主幹プロパティ (スマートメーター連動) ===
+
+        elif epc == 0xC0:  # 主幹 積算電力量 (正方向=買電) [0.01kWh単位, unsigned 32bit]
+            if sm:
+                val = int(sm.cumulative_power_buy_kwh * 100)  # kWh -> 0.01kWh
+            else:
+                val = 0
+            return struct.pack('>L', min(val, 0xFFFFFFFF))
+
+        elif epc == 0xC1:  # 主幹 積算電力量 (逆方向=売電) [0.01kWh単位, unsigned 32bit]
+            if sm:
+                val = int(sm.cumulative_power_sell_kwh * 100)  # kWh -> 0.01kWh
+            else:
+                val = 0
+            return struct.pack('>L', min(val, 0xFFFFFFFF))
+
+        elif epc == 0xC6:  # 主幹 瞬時電力 [W, signed 32bit]
+            if sm:
+                val = int(sm.instant_current_power)
+            else:
+                val = 0
+            return struct.pack('>i', val)
+
+        elif epc == 0xC7:  # 主幹 瞬時電流 [0.1A, signed 16bit × 2 (R相, T相)]
+            if sm:
+                # 簡易計算: I = P / V, R/T相に均等分配
+                # 電圧は C8 固定値 (R: 104.1V, T: 103.8V) から概算100Vとする
+                p = sm.instant_current_power
+                i_01a = int(abs(p) / 100.0 * 10)  # 0.1A単位
+                if p < 0:
+                    i_01a = -i_01a
+                # R相とT相に均等分配
+                i_r = i_01a // 2
+                i_t = i_01a - i_r
+            else:
+                i_r, i_t = 0, 0
+            return struct.pack('>hh', i_r, i_t)
+
+        # === チャンネルリストプロパティ ===
+
+        elif epc == 0xB3:  # 積算電力量リスト (simplex) [ch1-8, 各 unsigned 32bit, 0.01kWh]
+            data = bytearray([0x01, 0x08])  # start=1, end=8
+            ch_values = [
+                self._get_wh_cumulative_unit(),  # ch1: エコキュート
+                self._get_ac_cumulative_unit(),   # ch2: エアコン
+                0, 0, 0, 0, 0, 0,                # ch3-8: 未使用
+            ]
+            for v in ch_values:
+                data.extend(struct.pack('>L', min(max(0, v), 0xFFFFFFFF)))
+            return bytes(data)
+
+        elif epc == 0xB7:  # 瞬時電力リスト (simplex) [ch1-8, 各 signed 32bit, W]
+            data = bytearray([0x01, 0x08])  # start=1, end=8
+            ch_values = [
+                self._get_wh_instant_power(),  # ch1: エコキュート
+                self._get_ac_instant_power(),  # ch2: エアコン
+                0, 0, 0, 0, 0, 0,              # ch3-8: 未使用
+            ]
+            for v in ch_values:
+                data.extend(struct.pack('>i', v))
+            return bytes(data)
+
+        # === チャンネル別累積プロパティ (0xD0-0xD7) ===
+        # 各 8 bytes: 4B normal(買電方向) + 4B reverse(売電方向)
+
+        elif epc == 0xD0:  # ch1: エコキュート
+            val = self._get_wh_cumulative_unit()
+            return struct.pack('>LL', min(val, 0xFFFFFFFF), 0)
+
+        elif epc == 0xD1:  # ch2: エアコン
+            val = self._get_ac_cumulative_unit()
+            return struct.pack('>LL', min(val, 0xFFFFFFFF), 0)
+
+        # ch3-ch8 (0xD2-0xD7): 静的テーブルの全ゼロ値がそのまま返る
+
+        # --- 静的プロパティ ---
         if epc in DISTRIBUTION_BOARD_STATIC_PROPS:
             return DISTRIBUTION_BOARD_STATIC_PROPS[epc]
 

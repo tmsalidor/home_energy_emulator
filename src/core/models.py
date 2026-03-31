@@ -104,6 +104,9 @@ class ElectricWaterHeater(BaseDevice):
     # 0x41: 昼間沸き増し許可, 0x42: 昼間沸き増し禁止
     c0_operation_status: int = 0x41
 
+    # 積算消費電力量 (Wh) - 分電盤メータリング CH1 用
+    cumulative_power_wh: float = 0.0
+
 
 class InstantWaterHeater(BaseDevice):
     device_type: Literal[DeviceType.INSTANT_WATER_HEATER] = DeviceType.INSTANT_WATER_HEATER

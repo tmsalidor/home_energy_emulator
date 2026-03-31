@@ -81,7 +81,12 @@ async def start_echonet_service():
         wifi_echonet_ctrl.register_instance(0x01, 0x30, 0x01, AirConditionerAdapter(engine.air_conditioner))
 
     if 'distribution_board' in enabled_devs:
-        wifi_echonet_ctrl.register_instance(0x02, 0x87, 0x01, DistributionBoardAdapter(engine.distribution_board))
+        wifi_echonet_ctrl.register_instance(0x02, 0x87, 0x01, DistributionBoardAdapter(
+            engine.distribution_board,
+            engine.smart_meter,
+            engine.water_heater,
+            engine.air_conditioner
+        ))
 
     if 'instant_water_heater' in enabled_devs:
         wifi_echonet_ctrl.register_instance(0x02, 0x72, 0x01, InstantWaterHeaterAdapter(engine.instant_water_heater))
