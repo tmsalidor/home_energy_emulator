@@ -32,6 +32,9 @@ async def start_echonet_service():
     # Always check settings for enabled devices
     enabled_devs = settings.echonet.wifi_devices
     
+    if 'smart_meter' in enabled_devs:
+        wifi_instances.append((0x02, 0x88, 0x01))
+
     if 'solar' in enabled_devs:
         wifi_instances.append((0x02, 0x79, 0x01))
         
@@ -47,8 +50,8 @@ async def start_echonet_service():
     if 'air_conditioner' in enabled_devs:
         wifi_instances.append((0x01, 0x30, 0x01))
 
-    if 'smart_meter' in enabled_devs:
-        wifi_instances.append((0x02, 0x88, 0x01))
+    if 'distribution_board' in enabled_devs:
+        wifi_instances.append((0x02, 0x87, 0x01))
 
     if 'instant_water_heater' in enabled_devs:
         wifi_instances.append((0x02, 0x72, 0x01))
@@ -56,11 +59,12 @@ async def start_echonet_service():
     if 'fuel_cell' in enabled_devs:
         wifi_instances.append((0x02, 0x7C, 0x01))
 
-    if 'distribution_board' in enabled_devs:
-        wifi_instances.append((0x02, 0x87, 0x01))
-
     wifi_echonet_ctrl.register_instance(0x0E, 0xF0, 0x01, NodeProfileAdapter(wifi_instances))
     
+    if 'smart_meter' in enabled_devs:
+        # Wi-Fi側にも Smart Meter を登録（engine.smart_meter は Wi-SUN 側と共通インスタンス）
+        wifi_echonet_ctrl.register_instance(0x02, 0x88, 0x01, SmartMeterAdapter(engine.smart_meter))
+
     if 'solar' in enabled_devs:
         wifi_echonet_ctrl.register_instance(0x02, 0x79, 0x01, SolarAdapter(engine.solar))
         
@@ -76,18 +80,14 @@ async def start_echonet_service():
     if 'air_conditioner' in enabled_devs:
         wifi_echonet_ctrl.register_instance(0x01, 0x30, 0x01, AirConditionerAdapter(engine.air_conditioner))
 
-    if 'smart_meter' in enabled_devs:
-        # Wi-Fi側にも Smart Meter を登録（engine.smart_meter は Wi-SUN 側と共通インスタンス）
-        wifi_echonet_ctrl.register_instance(0x02, 0x88, 0x01, SmartMeterAdapter(engine.smart_meter))
+    if 'distribution_board' in enabled_devs:
+        wifi_echonet_ctrl.register_instance(0x02, 0x87, 0x01, DistributionBoardAdapter(engine.distribution_board))
 
     if 'instant_water_heater' in enabled_devs:
         wifi_echonet_ctrl.register_instance(0x02, 0x72, 0x01, InstantWaterHeaterAdapter(engine.instant_water_heater))
 
     if 'fuel_cell' in enabled_devs:
         wifi_echonet_ctrl.register_instance(0x02, 0x7C, 0x01, FuelCellAdapter(engine.fuel_cell, engine.instant_water_heater))
-
-    if 'distribution_board' in enabled_devs:
-        wifi_echonet_ctrl.register_instance(0x02, 0x87, 0x01, DistributionBoardAdapter(engine.distribution_board))
     
     # --- 2. Wi-SUN Controller Setup (Smart Meter) ---
     # Node Profile for Wi-SUN: Smart Meter(0288)
