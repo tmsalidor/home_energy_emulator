@@ -26,19 +26,37 @@ USER_JSON_DISTRIBUTION_BOARD = [
     {"epc": 0xB0, "edt": [0x00]},                                                                                      # Master rated capacity
     {"epc": 0xB1, "edt": [0x08]},                                                                                      # Number of measurement channels (simplex): 8
     {"epc": 0xB2, "edt": [0x01, 0x08]},                                                                               # Channel range spec (simplex cumulative): ch1-8
-    # 0xB3 (積算電力量リスト) は静的テーブルから除外 → アダプターで動的構築
+    {"epc": 0xB3, "edt": [0x01, 0x08,                                                                                 # Measured cumulative list (simplex): ch1-15
+        0x00, 0x00, 0x00, 0x00,   # ch1
+        0x00, 0x00, 0x00, 0x00,   # ch2
+        0x00, 0x00, 0x00, 0x00,   # ch3
+        0x00, 0x00, 0x00, 0x01,   # ch4
+        0x00, 0x00, 0x00, 0x5A,   # ch5
+        0x00, 0x00, 0x00, 0x03,   # ch6
+        0x00, 0x00, 0x00, 0xA3,   # ch7
+        0x00, 0x00, 0x00, 0x0E,   # ch8
+    ]},
     {"epc": 0xB6, "edt": [0x01, 0x08]},                                                                               # Channel range spec (simplex instant power): ch1-8
-    # 0xB7 (瞬時電力リスト) は静的テーブルから除外 → アダプターで動的構築
+    {"epc": 0xB7, "edt": [0x01, 0x08,                                                                                 # Measured instant power list (simplex): ch1-15
+        0x00, 0x00, 0x00, 0x00,   # ch1
+        0x00, 0x00, 0x00, 0x00,   # ch2
+        0x00, 0x00, 0x00, 0x00,   # ch3
+        0x00, 0x00, 0x00, 0x00,   # ch4
+        0x00, 0x00, 0x00, 0x00,   # ch5
+        0x00, 0x00, 0x00, 0x00,   # ch6
+        0x00, 0x00, 0x00, 0x21,   # ch7
+        0x00, 0x00, 0x00, 0x00,   # ch8
+    ]},
     {"epc": 0xB8, "edt": [0xFD]},                                                                                      # Number of measurement channels (duplex): N/A
     {"epc": 0xB9, "edt": [0xFD, 0xFD]},                                                                               # Channel range spec (duplex cumulative): N/A
     {"epc": 0xBA, "edt": [0xFD, 0xFD]},                                                                               # Measured cumulative list (duplex): N/A
     {"epc": 0xBD, "edt": [0xFD, 0xFD]},                                                                               # Channel range spec (duplex instant power): N/A
     {"epc": 0xBE, "edt": [0xFD, 0xFD]},                                                                               # Measured instant amount list (duplex): N/A
-    # 0xC0 (主幹積算正方向) は静的テーブルから除外 → アダプターで動的応答 (スマートメーター買電)
-    # 0xC1 (主幹積算逆方向) は静的テーブルから除外 → アダプターで動的応答 (スマートメーター売電)
+    {"epc": 0xC0, "edt": [0x00, 0x00, 0x00, 0x00]},                                                                   # Cumulative energy (normal direction)
+    {"epc": 0xC1, "edt": [0x00, 0x00, 0x04, 0x01]},                                                                   # Cumulative energy (reverse direction)
     {"epc": 0xC2, "edt": [0x02]},                                                                                      # Unit for cumulative energy: 0x02 = 0.01kWh
-    # 0xC6 (主幹瞬時電力) は静的テーブルから除外 → アダプターで動的応答 (スマートメーター瞬時電力)
-    # 0xC7 (主幹瞬時電流) は静的テーブルから除外 → アダプターで動的応答
+    {"epc": 0xC6, "edt": [0xFF, 0xFF, 0xFF, 0xC4]},                                                                   # Measured instantaneous electric power consumption
+    {"epc": 0xC7, "edt": [0x00, 0x03, 0x00, 0x09]},                                                                   # Measured instantaneous currents
     {"epc": 0xC8, "edt": [0x04, 0x11, 0x04, 0x0E]},                                                                   # Measured instantaneous voltage (static)
     # --- Per-channel cumulative data (8 bytes each: 4B normal + 4B reverse) ---
     # CH1-CH8 のみ。動的値はアダプターでオーバーライド。
