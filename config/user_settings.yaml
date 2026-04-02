@@ -30,12 +30,16 @@ echonet:
   - solar
   - battery
   - water_heater
-  - instant_water_heater
   - v2h
   - air_conditioner
   - distribution_board
+  - instant_water_heater
 simulation:
+  latitude: 35.46579
+  longitude: 139.62231
+  manual_weather: sunny
   scenario_file: data/scenarios/default_scenario.csv
   update_interval_sec: 1.0
+  weather_mode: auto
 system:
   log_level: INFO
