@@ -1,6 +1,6 @@
 import time
 import logging
-from .models import SmartMeter, Solar, Battery, DeviceType, ElectricWaterHeater, V2H, AirConditioner, InstantWaterHeater, FuelCell
+from .models import SmartMeter, Solar, Battery, DeviceType, ElectricWaterHeater, V2H, AirConditioner, InstantWaterHeater, FuelCell, DistributionBoard
 
 logger = logging.getLogger(__name__)
 
@@ -21,6 +21,7 @@ class SimulationEngine:
         self.v2h = V2H(device_id="v2h_01")
         self.air_conditioner = AirConditioner(device_id="ac_01")
         self.fuel_cell = FuelCell(device_id="fc_01")
+        self.distribution_board = DistributionBoard(device_id="db_01")
 
         # Simulation State
         self.current_load_w: float = 500.0  # Base household load
@@ -268,6 +269,10 @@ class SimulationEngine:
 
         self.solar.cumulative_generation_kwh += p_solar * kwh_increment_factor
 
+        # CH3: その他負荷 (シナリオの load_w) の積算・瞬時値を分電盤に反映
+        self.distribution_board.instant_load_w = p_load
+        self.distribution_board.cumulative_load_wh += p_load * (dt / 3600.0)
+
     def _update_battery(self, dt: float):
         """
         Handle battery SOC and guards.
@@ -334,6 +339,9 @@ class SimulationEngine:
             # Increase 60 per hour => 60/3600 per second = 1/60 per second
             fill_rate = 1.0 / 60.0
             wh.remaining_hot_water += fill_rate * dt
+
+            # 積算消費電力量を追跡 (分電盤メータリング CH1 用)
+            wh.cumulative_power_wh += wh.heating_power_w * (dt / 3600.0)
 
             # Stop if full
             if wh.remaining_hot_water >= wh.tank_capacity:

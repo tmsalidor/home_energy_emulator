@@ -11,6 +11,7 @@ echonet:
   battery_discharge_power_w: 1000.0
   battery_id: FE00000000000000000000000000000300
   battery_rated_capacity_wh: 10000.0
+  distribution_board_id: FE00000000000000000000000000000900
   fuel_cell_id: FE00000000000000000000000000000800
   fuel_cell_rated_power_w: 700.0
   instant_water_heater_id: FE00000000000000000000000000000700
@@ -29,9 +30,10 @@ echonet:
   - solar
   - battery
   - water_heater
+  - instant_water_heater
   - v2h
   - air_conditioner
-  - instant_water_heater
+  - distribution_board
 simulation:
   scenario_file: data/scenarios/default_scenario.csv
   update_interval_sec: 1.0

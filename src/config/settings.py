@@ -56,6 +56,8 @@ class EchonetSettings(BaseModel):
     # Fuel Cell (0x027C)
     fuel_cell_id: str = "FE00000000000000000000000000000800"
     fuel_cell_rated_power_w: float = 700.0
+    # Distribution Board Metering (0x0287)
+    distribution_board_id: str = "FE00000000000000000000000000000900"
 
 class SimulationSettings(BaseModel):
     update_interval_sec: float = 1.0

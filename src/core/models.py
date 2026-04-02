@@ -11,6 +11,7 @@ class DeviceType(str, Enum):
     V2H = "v2h"
     AIR_CONDITIONER = "air_conditioner"
     FUEL_CELL = "fuel_cell"
+    DISTRIBUTION_BOARD = "distribution_board"
 
 class BaseDevice(BaseModel):
     device_id: str
@@ -102,6 +103,9 @@ class ElectricWaterHeater(BaseDevice):
     # 昼間沸き増し設定 (0xC0)
     # 0x41: 昼間沸き増し許可, 0x42: 昼間沸き増し禁止
     c0_operation_status: int = 0x41
+
+    # 積算消費電力量 (Wh) - 分電盤メータリング CH1 用
+    cumulative_power_wh: float = 0.0
 
 
 class InstantWaterHeater(BaseDevice):
@@ -207,3 +211,12 @@ class V2H(BaseDevice):
     current_charge_w: float = 0.0
     # 今サイクルの実際の放電電力 [W]（放電中のみ正値）
     current_discharge_w: float = 0.0
+
+
+class DistributionBoard(BaseDevice):
+    device_type: Literal[DeviceType.DISTRIBUTION_BOARD] = DeviceType.DISTRIBUTION_BOARD
+
+    # フェーズ1: 全プロパティは固定値 (distribution_board_consts.py) から返す
+    # フェーズ2: チャンネル別の動的データフィールドを追加予定
+    cumulative_load_wh: float = 0.0   # 分電盤メータリング CH3 用 (シナリオの load_w)
+    instant_load_w: float = 0.0       # 分電盤メータリング CH3 用 (瞬時値)
