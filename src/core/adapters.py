@@ -769,7 +769,8 @@ class DistributionBoardAdapter(BaseAdapter):
     主幹: スマートメーター (売電/買電)
     CH1: エコキュート (電気温水器)
     CH2: エアコン
-    CH3-CH8: 未使用 (ゼロ)
+    CH3: その他負荷 (シナリオの load_w)
+    CH4-CH8: 未使用 (ゼロ)
     """
 
     def __init__(self, device: DistributionBoard,
@@ -812,6 +813,14 @@ class DistributionBoardAdapter(BaseAdapter):
         if self.air_conditioner:
             return int(self.air_conditioner.instant_power_w)
         return 0
+
+    def _get_load_cumulative_unit(self) -> int:
+        """その他負荷の積算消費電力量を 0.01kWh 単位に変換 (Wh -> 0.01kWh = ÷10)"""
+        return int(self.device.cumulative_load_wh / 10.0)
+
+    def _get_load_instant_power(self) -> int:
+        """その他負荷の瞬時消費電力 (W)"""
+        return int(self.device.instant_load_w)
 
     def get_property(self, epc: int) -> Optional[bytes]:
         d = self.device
@@ -869,9 +878,10 @@ class DistributionBoardAdapter(BaseAdapter):
         elif epc == 0xB3:  # 積算電力量リスト (simplex) [ch1-8, 各 unsigned 32bit, 0.01kWh]
             data = bytearray([0x01, 0x08])  # start=1, end=8
             ch_values = [
-                self._get_wh_cumulative_unit(),  # ch1: エコキュート
-                self._get_ac_cumulative_unit(),   # ch2: エアコン
-                0, 0, 0, 0, 0, 0,                # ch3-8: 未使用
+                self._get_wh_cumulative_unit(),    # ch1: エコキュート
+                self._get_ac_cumulative_unit(),    # ch2: エアコン
+                self._get_load_cumulative_unit(),  # ch3: その他負荷
+                0, 0, 0, 0, 0,                     # ch4-8: 未使用
             ]
             for v in ch_values:
                 data.extend(struct.pack('>L', min(max(0, v), 0xFFFFFFFF)))
@@ -880,9 +890,10 @@ class DistributionBoardAdapter(BaseAdapter):
         elif epc == 0xB7:  # 瞬時電力リスト (simplex) [ch1-8, 各 signed 32bit, W]
             data = bytearray([0x01, 0x08])  # start=1, end=8
             ch_values = [
-                self._get_wh_instant_power(),  # ch1: エコキュート
-                self._get_ac_instant_power(),  # ch2: エアコン
-                0, 0, 0, 0, 0, 0,              # ch3-8: 未使用
+                self._get_wh_instant_power(),    # ch1: エコキュート
+                self._get_ac_instant_power(),    # ch2: エアコン
+                self._get_load_instant_power(),  # ch3: その他負荷
+                0, 0, 0, 0, 0,                   # ch4-8: 未使用
             ]
             for v in ch_values:
                 data.extend(struct.pack('>i', v))
@@ -899,7 +910,11 @@ class DistributionBoardAdapter(BaseAdapter):
             val = self._get_ac_cumulative_unit()
             return struct.pack('>LL', min(val, 0xFFFFFFFF), 0)
 
-        # ch3-ch8 (0xD2-0xD7): 静的テーブルの全ゼロ値がそのまま返る
+        elif epc == 0xD2:  # ch3: その他負荷
+            val = self._get_load_cumulative_unit()
+            return struct.pack('>LL', min(val, 0xFFFFFFFF), 0)
+
+        # ch4-ch8 (0xD3-0xD7): 静的テーブルの全ゼロ値がそのまま返る
 
         # --- 静的プロパティ ---
         if epc in DISTRIBUTION_BOARD_STATIC_PROPS:

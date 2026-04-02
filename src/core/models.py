@@ -218,3 +218,5 @@ class DistributionBoard(BaseDevice):
 
     # フェーズ1: 全プロパティは固定値 (distribution_board_consts.py) から返す
     # フェーズ2: チャンネル別の動的データフィールドを追加予定
+    cumulative_load_wh: float = 0.0   # 分電盤メータリング CH3 用 (シナリオの load_w)
+    instant_load_w: float = 0.0       # 分電盤メータリング CH3 用 (瞬時値)

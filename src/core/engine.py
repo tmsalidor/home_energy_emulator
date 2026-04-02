@@ -269,6 +269,10 @@ class SimulationEngine:
 
         self.solar.cumulative_generation_kwh += p_solar * kwh_increment_factor
 
+        # CH3: その他負荷 (シナリオの load_w) の積算・瞬時値を分電盤に反映
+        self.distribution_board.instant_load_w = p_load
+        self.distribution_board.cumulative_load_wh += p_load * (dt / 3600.0)
+
     def _update_battery(self, dt: float):
         """
         Handle battery SOC and guards.
