@@ -118,7 +118,7 @@ Windows環境で開発・実行する場合の手順です。
 - **Weather Simulation (New)**: 外部の天気予報API (Open-Meteo) と連携し、指定された座標の雲量に応じてシナリオの太陽光発電量を時間帯ごとに自動調整（減衰）させます。"Today's Scenario" グラフで天候補正が適用された当日の発電推移を確認できます。
 - **Control Sliders**:
     - **Manual Sliders**: Load（負荷）、Solar（発電）、Battery/V2H（充放電）、Water Heater（給湯量・加熱）、Air Conditioner（エアコン消費電力）の値を手動で操作し、ECHONET Liteプロパティにリアルタイムで反映させることができます。
-    - **Scenario Mode**: Scenariosタブで設定したCSVシナリオを実行している間は、スライダーによる手動設定はシナリオ値によって上書きされます。手動操作を行いたい場合は Scenario Active状態を解除してください。
+    - **Scenario Mode**: Scenariosタブで設定したCSVシナリオを実行している間は、スライダーによる手動設定はシナリオ値によって上書きされます。手動操作を行いたい場合は、Dashboard上のScenarioトグルを `manual` に切り替えてください。
 
 ### Scenarios タブ (New)
 - **シナリオの管理**: 定義済みのCSVシナリオファイルを選択、複製、アップロード、名前変更、削除できます。デフォルトシナリオ(`default_scenario.csv`)も同梱されています。
