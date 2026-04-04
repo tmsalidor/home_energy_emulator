@@ -58,22 +58,53 @@ def render():
                 settings.simulation.latitude,
                 settings.simulation.longitude
             )
+            
+            def get_interpolated_values(target_sec):
+                data = engine.scenario_data
+                if target_sec <= data[0]['time_sec']:
+                    return data[0]['load'], data[0]['solar']
+                if target_sec >= data[-1]['time_sec']:
+                    return data[-1]['load'], data[-1]['solar']
+                
+                for i in range(len(data) - 1):
+                    p1, p2 = data[i], data[i+1]
+                    if p1['time_sec'] <= target_sec <= p2['time_sec']:
+                        ratio = (target_sec - p1['time_sec']) / (p2['time_sec'] - p1['time_sec']) if p2['time_sec'] != p1['time_sec'] else 0
+                        load = p1['load'] + (p2['load'] - p1['load']) * ratio
+                        solar = p1['solar'] + (p2['solar'] - p1['solar']) * ratio
+                        return load, solar
+                return 0, 0
+
             times, loads, solars = [], [], []
-            for point in engine.scenario_data:
-                t_sec = point['time_sec']
+            max_sec = engine.scenario_data[-1]['time_sec']
+            step_sec = 300  # 5 minutes
+            
+            for t_sec in range(0, max_sec + step_sec, step_sec):
+                if t_sec > max_sec:
+                    t_sec = max_sec
                 hour = (t_sec // 3600) % 24
+                load, solar_base = get_interpolated_values(t_sec)
+                
                 times.append(f"{t_sec//3600:02d}:{(t_sec%3600)//60:02d}")
-                loads.append(point['load'])
-                solars.append(point['solar'] * factors[hour])
+                loads.append(round(load, 1))
+                solars.append(round(solar_base * factors[hour], 1))
+                
             return {
                 "tooltip": {"trigger": "axis"},
                 "legend": {"data": ["Load (W)", "Adjusted Solar (W)"], "top": 0},
                 "grid": {"left": "3%", "right": "4%", "bottom": "3%", "top": "40px", "containLabel": True},
-                "xAxis": {"type": "category", "boundaryGap": False, "data": times},
+                "xAxis": {
+                    "type": "category", 
+                    "boundaryGap": False, 
+                    "data": times,
+                    "axisLabel": {
+                        "interval": 35  # 5分おきデータの場合、36ステップで3時間(i % 36 == 0で表示)
+                    }
+                },
                 "yAxis": {"type": "value", "name": "Power (W)"},
                 "series": [
-                    {"name": "Load (W)", "type": "line", "smooth": True, "data": loads, "itemStyle": {"color": "#3b82f6"}},
-                    {"name": "Adjusted Solar (W)", "type": "line", "smooth": True, "data": solars, "areaStyle": {"opacity": 0.3}, "itemStyle": {"color": "#10b981"}},
+                    {"name": "Load (W)", "type": "line", "smooth": False, "data": loads, "itemStyle": {"color": "#3b82f6"}},
+                    {"name": "Adjusted Solar (W)", "type": "line", "smooth": False, "data": solars, "areaStyle": {"opacity": 0.3}, "itemStyle": {"color": "#10b981"}},
                 ],
             }
 
