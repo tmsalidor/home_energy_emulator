@@ -97,13 +97,15 @@ def render():
             ui.label('Debug Controls').classes('font-bold')
 
             # Scenario Control
-            scenario_sw = ui.switch('Scenario Active', value=True,
-                                  on_change=lambda e: setattr(engine, 'use_scenario', e.value))
+            with ui.row().classes('items-center gap-4 w-full mb-2'):
+                ui.label('Scenario:').classes('font-bold')
+                scenario_sw = ui.toggle(['active', 'manual'], value='active' if getattr(engine, 'use_scenario', True) else 'manual',
+                                        on_change=lambda e: setattr(engine, 'use_scenario', e.value == 'active'))
 
             def manual_override():
                 if is_updating_ui: return
                 engine.use_scenario = False
-                scenario_sw.set_value(False)
+                scenario_sw.set_value('manual')
 
             ui.number('Load (W)', value=500, step=100,
                       on_change=lambda e: (manual_override(), setattr(engine, 'current_load_w', float(e.value or 0)))).classes('hidden')
