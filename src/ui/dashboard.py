@@ -2,6 +2,7 @@ from nicegui import ui
 from src.core.engine import engine
 from src.core.version import get_git_info
 from src.config.settings import settings
+from src.services.weather_service import weather_service
 
 def render():
     is_updating_ui = False
@@ -9,23 +10,117 @@ def render():
     with ui.column().classes('w-full items-center'):
         ui.label('Home Energy Emulator').classes('text-4xl font-bold my-4')
 
-        # Dashboard Card
-        with ui.card().classes('w-96'):
-            ui.label('System Status').classes('text-xl font-bold mb-2')
+        with ui.row().classes('w-full justify-center gap-4'):
+            # Dashboard Card
+            with ui.card().classes('w-96'):
+                ui.label('System Status').classes('text-xl font-bold mb-2')
 
-            # Status Labels
-            lbl_grid = ui.label().classes('text-lg')
-            lbl_solar = ui.label().classes('text-lg')
-            lbl_battery = ui.label().classes('text-lg')
-            lbl_wh = ui.label().classes('text-lg')
-            lbl_v2h = ui.label().classes('text-lg')
-            lbl_ac = ui.label().classes('text-lg')
-            lbl_iwh = ui.label().classes('text-lg')
-            lbl_fuel_cell = ui.label().classes('text-lg')
+                # Status Labels
+                lbl_grid = ui.label().classes('text-lg')
+                lbl_solar = ui.label().classes('text-lg')
+                lbl_battery = ui.label().classes('text-lg')
+                lbl_wh = ui.label().classes('text-lg')
+                lbl_v2h = ui.label().classes('text-lg')
+                lbl_ac = ui.label().classes('text-lg')
+                lbl_iwh = ui.label().classes('text-lg')
+                lbl_fuel_cell = ui.label().classes('text-lg')
 
-            # Application Version
-            ui.separator().classes('my-2')
-            ui.label(get_git_info()).classes('text-xs text-gray-400 text-center w-full')
+                # Application Version
+                ui.separator().classes('my-2')
+                ui.label(get_git_info()).classes('text-xs text-gray-400 text-center w-full')
+                
+            # Weather Simulation Card
+            with ui.card().classes('w-96'):
+                ui.label('Weather Simulation').classes('text-xl font-bold mb-2')
+                
+                with ui.row().classes('items-center gap-4 w-full'):
+                    ui.label('Mode:').classes('font-bold')
+                    weather_mode_toggle = ui.toggle(['auto', 'manual'], value=settings.simulation.weather_mode, 
+                                                    on_change=lambda e: (setattr(settings.simulation, 'weather_mode', e.value), settings.save_to_yaml(), update_weather_ui()))
+                
+                manual_weather_select = ui.select({'sunny': 'Sunny', 'cloudy': 'Cloudy', 'rainy': 'Rainy'}, 
+                                                  value=settings.simulation.manual_weather, label='Manual Weather', 
+                                                  on_change=lambda e: (setattr(settings.simulation, 'manual_weather', e.value), settings.save_to_yaml(), update_weather_ui())).classes('w-full')
+                
+                lbl_solar_factor = ui.label().classes('text-lg font-bold mt-2 text-blue-600')
+
+        with ui.row().classes('w-full justify-center mt-4'):
+            with ui.card().classes('w-full max-w-4xl p-4'):
+                ui.label("Today's Scenario (Weather Adjusted)").classes('text-xl font-bold mb-2')
+                scenario_chart = ui.echart({}).classes('w-full h-64')
+
+        def _get_adjusted_scenario_chart():
+            if not engine.scenario_data:
+                return {}
+            factors = weather_service.get_daily_factors(
+                settings.simulation.weather_mode,
+                settings.simulation.manual_weather,
+                settings.simulation.latitude,
+                settings.simulation.longitude
+            )
+            
+            def get_interpolated_values(target_sec):
+                data = engine.scenario_data
+                if target_sec <= data[0]['time_sec']:
+                    return data[0]['load'], data[0]['solar']
+                if target_sec >= data[-1]['time_sec']:
+                    return data[-1]['load'], data[-1]['solar']
+                
+                for i in range(len(data) - 1):
+                    p1, p2 = data[i], data[i+1]
+                    if p1['time_sec'] <= target_sec <= p2['time_sec']:
+                        ratio = (target_sec - p1['time_sec']) / (p2['time_sec'] - p1['time_sec']) if p2['time_sec'] != p1['time_sec'] else 0
+                        load = p1['load'] + (p2['load'] - p1['load']) * ratio
+                        solar = p1['solar'] + (p2['solar'] - p1['solar']) * ratio
+                        return load, solar
+                return 0, 0
+
+            times, loads, solars = [], [], []
+            max_sec = engine.scenario_data[-1]['time_sec']
+            step_sec = 300  # 5 minutes
+            
+            for t_sec in range(0, max_sec + step_sec, step_sec):
+                if t_sec > max_sec:
+                    t_sec = max_sec
+                hour = (t_sec // 3600) % 24
+                load, solar_base = get_interpolated_values(t_sec)
+                
+                times.append(f"{t_sec//3600:02d}:{(t_sec%3600)//60:02d}")
+                loads.append(round(load, 1))
+                solars.append(round(solar_base * factors[hour], 1))
+                
+            return {
+                "tooltip": {"trigger": "axis"},
+                "legend": {"data": ["Load (W)", "Adjusted Solar (W)"], "top": 0},
+                "grid": {"left": "3%", "right": "4%", "bottom": "3%", "top": "40px", "containLabel": True},
+                "xAxis": {
+                    "type": "category", 
+                    "boundaryGap": False, 
+                    "data": times,
+                    "axisLabel": {
+                        "interval": 35  # 5分おきデータの場合、36ステップで3時間(i % 36 == 0で表示)
+                    }
+                },
+                "yAxis": {"type": "value", "name": "Power (W)"},
+                "series": [
+                    {"name": "Load (W)", "type": "line", "smooth": False, "data": loads, "itemStyle": {"color": "#3b82f6"}},
+                    {"name": "Adjusted Solar (W)", "type": "line", "smooth": False, "data": solars, "areaStyle": {"opacity": 0.3}, "itemStyle": {"color": "#10b981"}},
+                ],
+            }
+
+        def update_weather_ui():
+            factor = weather_service.get_solar_factor(
+                settings.simulation.weather_mode, settings.simulation.manual_weather,
+                settings.simulation.latitude, settings.simulation.longitude
+            )
+            lbl_solar_factor.set_text(f"Current Solar Factor: {factor*100:.1f} %")
+            manual_weather_select.set_visibility(settings.simulation.weather_mode == 'manual')
+            scenario_chart.options.clear()
+            scenario_chart.options.update(_get_adjusted_scenario_chart())
+            scenario_chart.update()
+
+        # Initialize chart
+        update_weather_ui()
 
     # Debug Controls
     with ui.row().classes('w-full justify-center mt-8'):
@@ -33,13 +128,15 @@ def render():
             ui.label('Debug Controls').classes('font-bold')
 
             # Scenario Control
-            scenario_sw = ui.switch('Scenario Active', value=True,
-                                  on_change=lambda e: setattr(engine, 'use_scenario', e.value))
+            with ui.row().classes('items-center gap-4 w-full mb-2'):
+                ui.label('Scenario:').classes('font-bold')
+                scenario_sw = ui.toggle(['active', 'manual'], value='active' if getattr(engine, 'use_scenario', True) else 'manual',
+                                        on_change=lambda e: setattr(engine, 'use_scenario', e.value == 'active'))
 
             def manual_override():
                 if is_updating_ui: return
                 engine.use_scenario = False
-                scenario_sw.set_value(False)
+                scenario_sw.set_value('manual')
 
             ui.number('Load (W)', value=500, step=100,
                       on_change=lambda e: (manual_override(), setattr(engine, 'current_load_w', float(e.value or 0)))).classes('hidden')

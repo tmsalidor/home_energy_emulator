@@ -1,6 +1,7 @@
 import time
 import logging
 from .models import SmartMeter, Solar, Battery, DeviceType, ElectricWaterHeater, V2H, AirConditioner, InstantWaterHeater, FuelCell, DistributionBoard
+from src.services.weather_service import weather_service
 
 logger = logging.getLogger(__name__)
 
@@ -214,7 +215,14 @@ class SimulationEngine:
             # Let's overwrite for now, manual controls effectively offset or disable scenario logic?
             # Or simple: Scenario drives base values.
             self.current_load_w = s_load
-            self.solar.instant_generation_power = s_solar
+            
+            factor = weather_service.get_solar_factor(
+                settings.simulation.weather_mode,
+                settings.simulation.manual_weather,
+                settings.simulation.latitude,
+                settings.simulation.longitude
+            )
+            self.solar.instant_generation_power = s_solar * factor
 
         # 1. Update Battery State (SOC Logic)
         self._update_battery(dt)

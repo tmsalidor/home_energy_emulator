@@ -62,6 +62,10 @@ class EchonetSettings(BaseModel):
 class SimulationSettings(BaseModel):
     update_interval_sec: float = 1.0
     scenario_file: str = "data/scenarios/default_scenario.csv"
+    weather_mode: str = "auto" # "auto" or "manual"
+    manual_weather: str = "sunny" # "sunny", "cloudy", "rainy"
+    latitude: float = 35.465786  # Default: Yokohama Station
+    longitude: float = 139.622313
 
 class Settings(BaseSettings):
     system: SystemSettings = SystemSettings()

@@ -56,6 +56,30 @@ def render():
                                      on_change=on_fuel_cell_change).classes('w-full')
                 ui.label('※ Fuel Cell 有効化のときは Inst. Water Heater も有効にし、他はすべて無効にすること').classes('text-xs text-orange-500 ml-6')
 
+            # 1.6 Simulation & Weather Settings Card
+            with ui.card().classes('w-96 p-4 flex-col'):
+                ui.label('Simulation & Weather Settings (Coordinates)').classes('text-lg font-bold mb-2')
+                
+                # Input boxes
+                with ui.row().classes('w-full items-center gap-2 mb-2'):
+                    lat_input = ui.number('Latitude', value=settings.simulation.latitude, format='%.5f', step=0.00001).classes('flex-1')
+                    lon_input = ui.number('Longitude', value=settings.simulation.longitude, format='%.5f', step=0.00001).classes('flex-1')
+                
+                ui.label('Map: Click to set coordinates').classes('text-sm text-gray-500 mb-1')
+                
+                # Leaflet map
+                m = ui.leaflet(center=(settings.simulation.latitude, settings.simulation.longitude), zoom=10).classes('w-full h-48')
+                marker = m.marker(latlng=(settings.simulation.latitude, settings.simulation.longitude))
+                
+                def on_map_click(e):
+                    lat = e.args['latlng']['lat']
+                    lon = e.args['latlng']['lng']
+                    marker.move(lat, lon)
+                    lat_input.set_value(lat)
+                    lon_input.set_value(lon)
+                    
+                m.on('map-click', on_map_click)
+
             # 2. ECHONET Lite Property Settings
             with ui.column().classes('flex-1 min-w-[300px] gap-4'):
 
@@ -188,6 +212,9 @@ def render():
             settings.echonet.fuel_cell_id = fc_id_input.value
             settings.echonet.fuel_cell_rated_power_w = float(fc_power_input.value or 0)
             settings.echonet.distribution_board_id = db_id_input.value
+            
+            settings.simulation.latitude = float(lat_input.value or settings.simulation.latitude)
+            settings.simulation.longitude = float(lon_input.value or settings.simulation.longitude)
 
             settings.save_to_yaml()
             ui.notify('Settings saved. Please restart the application.', type='positive')
