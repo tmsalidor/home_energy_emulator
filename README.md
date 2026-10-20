@@ -153,6 +153,32 @@ Windows環境で開発・実行する場合の手順です。
 
 Windows環境（特にDocker Desktop for Windows）では、ECHONET LiteのUDPマルチキャスト（224.0.23.0:3610）の送受信がホストネットワークの制限により正しく機能しない場合があります。HEMSコントローラー等から機器が検索できない場合は、**Windows上でPythonを直接実行**してください。
 
+### Raspberry Pi の Wi-Fi 省電力によるマルチキャストの取りこぼし
+
+Raspberry Pi の内蔵 Wi-Fi は省電力機能が有効（初期状態）だと、ECHONET Liteのマルチキャスト（224.0.23.0）を取りこぼし、**しばらくするとHEMSコントローラーの機器探索に出てこなくなる**ことがあります（再起動すると一時的に直る）。Raspberry Pi 3 で確認しています。Wi-Fi で常時稼働させる場合は、省電力機能を無効にしてください。
+
+```bash
+# 現在の状態を確認 (on なら有効)
+iw wlan0 get power_save
+
+# 一時的に無効にする (再起動すると元に戻る)
+sudo iw wlan0 set power_save off
+
+# 恒久的に無効にする (NetworkManager を使う Raspberry Pi OS の場合。再起動後に反映)
+printf '[connection]\nwifi.powersave = 2\n' | sudo tee /etc/NetworkManager/conf.d/wifi-powersave-off.conf
+```
+
+### Wi-SUN（Bルート）は同時に1台としか接続できない
+
+Wi-SUNドングル（SKSTACK IP）はPANA認証サーバ（PAA）として動作し、**1台の機器とPANA接続が成立すると、他の機器からの新規の接続を受け付けません**（SKコマンドリファレンスマニュアル SKJOIN の項）。実際のスマートメーターとは挙動が異なります。
+
+- 別のHEMSコントローラー（Nature Remo E 等）でスマートメーターを新しく登録する場合は、**接続中の機器の電源を切って（または登録を解除して）**から、エミュレーターを再起動してください。起動時の `SKRESET` / `SKSTART` で既存のPANAセッションが消え、新しい機器が接続できるようになります。
+    ```bash
+    sudo docker restart home_energy_emulator
+    ```
+- 接続できていない機器からのPANA接続要求は、ログにポート `02CC`（716）宛ての `RX UDP` として繰り返し記録されます。
+- エミュレーターを再起動するとPANAセッションが切れるため、接続中のHEMSコントローラーは再接続が必要になります。
+
 ## トラブルシューティング
 - **USBドングルへのアクセスエラー**:
     - 起動時にCOMポートや `/dev/ttyUSB0` の警告が出る場合、権限（chmod）やポート番号の指定（WindowsならCOM3等）を見直してください。Wi-SUN通信は行われませんが、Wi-Fi接続のECHONET Lite機器としての機能は影響を受けません。
@@ -160,6 +186,9 @@ Windows環境（特にDocker Desktop for Windows）では、ECHONET LiteのUDP�
     - Docker環境の場合、`docker-compose.yml` で `network_mode: "host"` になっているか確認してください。
     - Windows/OS X のDocker環境ではホストモードが制限されるため、Pythonを直接実行してください。
     - ファイアウォール設定で UDPポート 3610 および マルチキャスト (224.0.23.0) が許可されているか確認してください。
+    - Raspberry Pi を Wi-Fi で使っている場合、しばらくすると見つからなくなる（再起動すると直る）ときは、Wi-Fiの省電力機能を無効にしてください（[注意事項](#raspberry-pi-の-wi-fi-省電力によるマルチキャストの取りこぼし)参照）。
+- **スマートメーターを新しく登録できない（Wi-SUN）**:
+    - すでに別のHEMSコントローラーがWi-SUNで接続していると、新しい機器は接続できません。接続中の機器の電源を切ってからエミュレーターを再起動してください（[注意事項](#wi-sunbルートは同時に1台としか接続できない)参照）。
 - **Nature Remo Eでエネファームが見つからない**:
     - コントローラ側の仕様制約のため、Fuel Cell (0x027C) を有効にする場合は、**Inst. Water Heater (0x0272) も同時に有効にし、他のすべてのWi-Fiデバイスは無効にしてください**。
     - エネファームの発電動作状態 (`0xCB`) は瞬間式給湯器の燃焼状態 (`0xD0`) に連動します。
