@@ -164,9 +164,14 @@ iw wlan0 get power_save
 # 一時的に無効にする (再起動すると元に戻る)
 sudo iw wlan0 set power_save off
 
-# 恒久的に無効にする (NetworkManager を使う Raspberry Pi OS の場合。再起動後に反映)
-printf '[connection]\nwifi.powersave = 2\n' | sudo tee /etc/NetworkManager/conf.d/wifi-powersave-off.conf
+# 恒久的に無効にする (NetworkManager を使う Raspberry Pi OS の場合)
+# 1. 使用中の Wi-Fi 接続名を確認 (wlan0 の行の左側)
+nmcli -t -f NAME,DEVICE connection show --active
+# 2. その接続の省電力を無効にする (<接続名> を置き換える。再起動後に反映)
+sudo nmcli connection modify "<接続名>" 802-11-wireless.powersave 2
 ```
+
+※ 設定は Wi-Fi 接続ごとです。別の Wi-Fi に接続する場合は、その接続名で同じ設定をしてください。`/etc/NetworkManager/conf.d/` に `wifi.powersave = 2` を書く方法は、確認した環境（Raspberry Pi 3）では再起動後に反映されませんでした。
 
 ### Wi-SUN（Bルート）は同時に1台としか接続できない
 
