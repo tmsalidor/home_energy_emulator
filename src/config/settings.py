@@ -18,7 +18,9 @@ class SystemSettings(BaseModel):
     log_level: str = "INFO"
 
 class CommunicationSettings(BaseModel):
-    wi_sun_device: str = "/dev/ttyUSB0"
+    wi_sun_device: str = "/dev/ttyUSB0"  # 見つからないときは /dev/serial/by-id, ttyUSB*, ttyACM* から探す
+    # Wi-SUN ドングルの種類: auto (自動判別) / skstack_a1 (TESSERA, BP35A1) / bp35c0 (RS-WSUHA-P)
+    wi_sun_dongle: str = "auto"
     echonet_port: int = 3610
     # Wi-SUN B-Route Settings
     b_route_id: str = "00112233445566778899AABBCCDDEEFF"

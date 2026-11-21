@@ -3,6 +3,7 @@ system:
   
 communication:
   wi_sun_device: /dev/ttyUSB0
+  wi_sun_dongle: auto
   echonet_port: 3610
 
 simulation:
