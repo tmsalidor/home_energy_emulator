@@ -33,7 +33,7 @@ ECHONET Liteプロパティに対応したHEMS (Home Energy Management System) �
 - **ハードウェア環境**:
     - Wi-SUN USBドングル - Bルート通信エミュレーション用。以下に対応し、種類は起動時に自動判別します。
         - SKSTACK IP (TESSERA RL7023、ローム BP35A1 等)
-        - RATOC RS-WSUHA-P (ローム BP35C0) ※実機確認中。RS-WSUHA-J11 は非対応
+        - RATOC RS-WSUHA-P (ローム BP35C0、DSE ファーム ver.1.5.2) ※実機確認中。ロームの資料で B ルートのコーディネータ (メーター側) として動作可能とされています (メーター側の Wi-SUN 認証は未取得)。RS-WSUHA-J11 は非対応
     - Raspberry Pi (3B+, 4B, 5 等) 推奨 - 常時稼働用サーバーとして適しています。
 - **ソフトウェア環境**:
     - **推奨**: Linux (Ubuntu, Raspberry Pi OS) - Docker (`network_mode: host`) がネイティブ動作するため、ECHONET Liteのマルチキャスト通信に最適です。
@@ -174,7 +174,7 @@ printf '[connection]\nwifi.powersave = 2\n' | sudo tee /etc/NetworkManager/conf.
 
 起動時に `SKVER` / `SKAPPVER` / `SKINFO` の返答からドングルの種類を推定し、最初に受信した `ERXUDP` の形（SIDE 項目の有無）で確定します。RS-WSUHA-P (BP35C0) は `ERXUDP` / `EVENT` / `SKSENDTO` に SIDE (0 = Bルート) が入るため、送信もそれに合わせます。
 
-- RS-WSUHA-P では起動時に `ROPT` で受信データの形式を確認し、生バイトの設定なら `WOPT 01` で16進文字の表示に切り替えます（ドングルのフラッシュに保存されるため、書き込むのは必要なときの1回だけです）。
+- RS-WSUHA-P は初期設定で受信データ (`ERXUDP`) を生バイトで出します。起動時に `ROPT` で形式を確認し、生バイトの設定なら `WOPT 01` で16進文字の表示に切り替えます（ドングルのフラッシュに保存されるため、書き込むのは必要なときの1回だけです）。
 - 設定のデバイスパス（初期値 `/dev/ttyUSB0`）が見つからないときは、`/dev/serial/by-id/*`・`/dev/ttyUSB*`・`/dev/ttyACM*` などから探して最初に見つかったものを使います。
 - 判別の結果はログ（`Wi-SUN dongle type: ...`）と Settings タブで確認できます。
 

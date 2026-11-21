@@ -181,7 +181,8 @@ class WiSunManager:
 
         # 1. Reset
         await self.serial.write_line("SKRESET")
-        await asyncio.sleep(2.0) # Wait for reboot
+        # リセット後は 3 秒以上待ってからアクセスする (ROHM BP35C0 サンプルスクリプト説明書 5.5)
+        await asyncio.sleep(3.0)
 
         # ドングルの種類を確かめる (SKVER / SKAPPVER / SKINFO)
         await self._detect_dongle()

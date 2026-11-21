@@ -46,9 +46,9 @@ def profile_by_name(name: str) -> Optional[DongleProfile]:
 
 
 # --- 起動時の当たり付け ---------------------------------------------------
-# 実機の返答文字列で確かめて直す前提。判定の条件はここだけに置く。
-# BP35C0 のデュアルスタック版ファームは EVER 1.5.x と報告されている (他の実装より)。
-# BP35A1 / TESSERA は EVER 1.2.x 系。
+# 判定の条件はここだけに置く。
+# BP35C0 の DSE (Dual Stack Edition) ファームは SKVER が "EVER 1.5.2"、SKAPPVER が "EAPPVER rev15"
+# (ROHM BP35C0/BP35C2 サンプルスクリプト説明書 図4)。BP35A1 / TESSERA は EVER 1.2.x 系。
 _DUAL_STACK_MIN_EVER = (1, 5)
 
 

@@ -19,6 +19,30 @@ ERXUDP_C0 = ("ERXUDP FE80:0000:0000:0000:021D:1290:1234:5678 FE80:0000:0000:0000
              "0E1A 0E1A 001D129012345678 1 0 000E 1081000105FF010288016201E700")
 
 
+# ROHM サンプルスクリプト説明書 図10 の BP35C0 の実際の行 (PANA, 受信データは初期設定の生バイト)
+ERXUDP_C0_ROHM_PANA = ("ERXUDP FE80:0000:0000:0000:021D:1291:0000:05B9 FE80:0000:0000:0000:021D:1291:0000:00D5 "
+                       "02CC 02CC 001D1291000005B9 0 0 0044 D\"'")
+
+
+class TestRohmDoc(unittest.TestCase):
+    """ROHM の資料に載っている BP35C0 の実際の返答で確かめる"""
+
+    def test_skver_skappver(self):
+        self.assertIs(guess_profile("EVER 1.5.2", "EAPPVER rev15")[0], BP35C0)
+
+    def test_erxudp_pana_binary(self):
+        p = parse_erxudp(ERXUDP_C0_ROHM_PANA)
+        self.assertTrue(p.has_side)
+        self.assertEqual((p.secured, p.side, p.datalen, p.lport), ("0", "0", 0x44, "02CC"))
+        self.assertFalse(p.is_hex_payload)
+
+    def test_events(self):
+        e = parse_event("EVENT 21 FE80:0000:0000:0000:021D:1291:0000:05B9 0 00", BP35C0)
+        self.assertEqual((e.num, e.side, e.param), ("21", "0", "00"))
+        e = parse_event("EVENT 25 FE80:0000:0000:0000:021D:1291:0000:05B9 0", BP35C0)
+        self.assertEqual((e.num, e.side, e.param), ("25", "0", None))
+
+
 class TestParse(unittest.TestCase):
     def test_erxudp_without_side(self):
         p = parse_erxudp(ERXUDP_A1)
@@ -143,7 +167,7 @@ class TestManager(unittest.TestCase):
         self.assertEqual(cmds[-1], "SKSTART")
 
     def test_init_bp35c0_switches_to_hex(self):
-        m = run_init({"SKRESET": [], "SKVER": ["EVER 1.5.2", "OK"], "ROPT": ["OK 00"]})
+        m = run_init({"SKRESET": [], "SKVER": ["EVER 1.5.2", "OK"], "SKAPPVER": ["EAPPVER rev15", "OK"], "ROPT": ["OK 00"]})
         self.assertIs(m.profile, BP35C0)
         cmds = [c for c in m.serial.written if isinstance(c, str)]
         self.assertIn("WOPT 01", cmds)
