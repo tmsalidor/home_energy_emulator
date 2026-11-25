@@ -331,6 +331,22 @@ class BatteryAdapter(BaseAdapter):
             return False
         return super().set_property(epc, data)
 
+def _encode_property_map(epcs: list[int]) -> bytes:
+    """ECHONET Lite のプロパティマップ (付録 1 の記述形式 2) を作る。
+    16 個以上のときは 16 バイトのビットマップで、n バイト目 (0 始まり) の bit b が EPC 0x80 + 0x10 * b + n を表す"""
+    epcs = sorted(set(e for e in epcs if 0x80 <= e <= 0xFF))
+    if len(epcs) < 16:
+        return bytes([len(epcs)] + epcs)
+    bitmap = bytearray(16)
+    for e in epcs:
+        bitmap[e & 0x0F] |= 1 << ((e >> 4) - 8)
+    return bytes([len(epcs)]) + bytes(bitmap)
+
+
+# 積算消費電力量 (0x85) の起点 (Wh)。静的テーブルの値を使う
+_WATER_HEATER_CUMULATIVE_BASE_WH = struct.unpack(">L", WATER_HEATER_STATIC_PROPS[0x85])[0]
+
+
 class ElectricWaterHeaterAdapter(BaseAdapter):
     def __init__(self, device: ElectricWaterHeater):
         super().__init__(settings.echonet.water_heater_id)
@@ -339,10 +355,19 @@ class ElectricWaterHeaterAdapter(BaseAdapter):
     def _get_supported_epcs(self) -> list[int]:
         base = super()._get_supported_epcs()
         # Merge static props keys with dynamic props
-        # Dynamic overrides: 0x80, 0xB0, 0xB2, 0xE1, 0xE2
-        dynamic_epcs = [0x80, 0xB0, 0xB2, 0xE1, 0xE2, 0xE3, 0xC0]
+        # Dynamic overrides: 0x80, 0x85, 0xB0, 0xB2, 0xE1, 0xE2
+        dynamic_epcs = [0x80, 0x85, 0xB0, 0xB2, 0xE1, 0xE2, 0xE3, 0xC0]
+        if settings.echonet.water_heater_instant_power:
+            dynamic_epcs.append(0x84)
         static_epcs = list(WATER_HEATER_STATIC_PROPS.keys())
         return sorted(list(set(base + dynamic_epcs + static_epcs)))
+
+    def _instant_power_w(self) -> int:
+        """瞬時消費電力 (W)。沸き上げ中だけ heating_power_w を消費する"""
+        d = self.device
+        if d.is_running and d.is_heating:
+            return int(d.heating_power_w)
+        return 0
 
     def get_property(self, epc: int) -> Optional[bytes]:
         d = self.device
@@ -350,6 +375,20 @@ class ElectricWaterHeaterAdapter(BaseAdapter):
         # 1. Dynamic Values
         if epc == 0x80: # Status
             return b'\x30' if d.is_running else b'\x31'
+
+        elif epc == 0x84 and settings.echonet.water_heater_instant_power:
+            # 瞬時消費電力計測値 (2 bytes unsigned, W)
+            return struct.pack(">H", min(self._instant_power_w(), 65533))
+
+        elif epc == 0x85: # 積算消費電力量計測値 (4 bytes unsigned, 0.001 kWh = Wh)
+            # 静的テーブルの値を起点に、沸き上げた分を足していく。
+            # 0 から始めると、これまで固定値を受けていたサーバーからはカウンタが戻ったように見える。
+            # 積算はメモリにだけあるので、エミュレータを再起動すると起点に戻る
+            val = _WATER_HEATER_CUMULATIVE_BASE_WH + int(d.cumulative_power_wh)
+            return struct.pack(">L", min(val, 0xFFFFFFFE))
+
+        elif epc == 0x9F: # Get Property Map (0x84 の有無を設定に合わせる)
+            return _encode_property_map(self._get_supported_epcs())
 
         elif epc == 0xB0: # Auto Setting
             # 0x41: Auto, 0x42: Manual Start, 0x43: Manual Stop
