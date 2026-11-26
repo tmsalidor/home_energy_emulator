@@ -7,7 +7,7 @@ ECHONET Liteプロパティに対応したHEMS (Home Energy Management System) �
 
 ## 特徴
 - **ハイブリッド通信エミュレーション**:
-    - **スマートメーター**: Wi-SUN (Bルート) 経由でのプロパティ公開。実際のUSBドングル (BP35A1等) または仮想COMポートを通じてシリアル通信を行います。未接続時には無効化。
+    - **スマートメーター**: Wi-SUN (Bルート) 経由でのプロパティ公開。実際のUSBドングル (TESSERA RL7023・BP35A1 等の SKSTACK IP、RATOC RS-WSUHA-P) または仮想COMポートを通じてシリアル通信を行います。ドングルの種類は自動判別します。未接続時には無効化。
     - **その他デバイス**: Wi-Fi (LAN) 経由でのECHONET Liteプロパティ公開 (UDP/Multicast)。
 - **Web UI**:
     - **Dashboard**: 各デバイスの発電・充放電状態や消費電力のリアルタイム監視と、スライダーによる手動シミュレーション操作。天候API（Open-Meteo）を使った太陽光発電の自動減衰・予測グラフ表示にも対応。
@@ -33,7 +33,9 @@ ECHONET Liteプロパティに対応したHEMS (Home Energy Management System) �
         - **CH3 (0xB3, 0xB7, 0xD2)**: シナリオの `load_w`（その他負荷）の瞬時電力・積算と連動。
 ## 必要要件
 - **ハードウェア環境**:
-    - Wi-SUN USBドングル (ローム社製 BP35A1 等) - Bルート通信エミュレーション用 
+    - Wi-SUN USBドングル - Bルート通信エミュレーション用。以下に対応し、種類は起動時に自動判別します。
+        - SKSTACK IP (TESSERA RL7023、ローム BP35A1 等)
+        - RATOC RS-WSUHA-P (ローム BP35C0、DSE ファーム ver.1.5.2) - Nature Remo E でスマートメーターの登録・瞬時電力の表示を確認済み。メーター側の Wi-SUN 認証はロームでは未取得です。USB は FTDI (VID:PID 0403:6015) で、Linux では `/dev/ttyUSB0` として見えます。RS-WSUHA-J11 (BP35C0-J11) はバイナリ形式のコマンドで、B ルートではメーター側になれないため非対応
     - Raspberry Pi (3B+, 4B, 5 等) 推奨 - 常時稼働用サーバーとして適しています。
 - **ソフトウェア環境**:
     - **推奨**: Linux (Ubuntu, Raspberry Pi OS) - Docker (`network_mode: host`) がネイティブ動作するため、ECHONET Liteのマルチキャスト通信に最適です。
@@ -129,7 +131,7 @@ Windows環境で開発・実行する場合の手順です。
 
 ### Settings タブ
 - **Simulation & Weather Settings**: UI上のインタラクティブなマップ（Leaflet）をクリックして、天候情報取得の基準となる地理座標（緯度・経度）を直感的に設定できます。
-- **Wi-SUN Settings**: Bルート認証ID・パスワードを設定します。
+- **Wi-SUN Settings**: Bルート認証ID・パスワードを設定します。**Dongle Type** は通常 `auto` (自動判別) のままにします。判別がうまくいかないときだけ `skstack_a1` (TESSERA / BP35A1) か `bp35c0` (RS-WSUHA-P) に固定してください。検出したドングルはカードの下に表示されます。
 - **Network Devices**: Wi-Fi経由で公開するECHONET Liteデバイス（太陽光・蓄電池・電気給湯器・瞬間式給湯器・V2H・エアコン・エネファーム・分電盤）を個別に有効/無効化できます。
 - **Device Parameters**: 各デバイスのノードプロファイル（識別番号・メーカーコード）、定格容量、タンク容量、最大充放電電力などを設定します。
 - **設定の即時反映**: デバイスのON/OFFや定格容量などのパラメータ変更は即時にエンジンへ反映されます。（※Wi-SUNの認証関連など一部の根幹機能は再起動が必要な場合があります）。設定は `config/user_settings.yaml` に自動保存されます。
@@ -169,6 +171,14 @@ sudo iw wlan0 set power_save off
 # 恒久的に無効にする (NetworkManager を使う Raspberry Pi OS の場合。再起動後に反映)
 printf '[connection]\nwifi.powersave = 2\n' | sudo tee /etc/NetworkManager/conf.d/wifi-powersave-off.conf
 ```
+
+### Wi-SUN ドングルの自動判別
+
+起動時に `SKVER` / `SKAPPVER` / `SKINFO` の返答からドングルの種類を推定し、最初に受信した `ERXUDP` の形（SIDE 項目の有無）で確定します。RS-WSUHA-P (BP35C0) は `ERXUDP` / `EVENT` / `SKSENDTO` に SIDE (0 = Bルート) が入るため、送信もそれに合わせます。
+
+- RS-WSUHA-P は初期設定で受信データ (`ERXUDP`) を生バイトで出します。起動時に `ROPT` で形式を確認し、生バイトの設定なら `WOPT 01` で16進文字の表示に切り替えます（ドングルのフラッシュに保存されるため、書き込むのは必要なときの1回だけです）。
+- 設定のデバイスパス（初期値 `/dev/ttyUSB0`）が見つからないときは、`/dev/serial/by-id/*`・`/dev/ttyUSB*`・`/dev/ttyACM*` などから探して最初に見つかったものを使います。
+- 判別の結果はログ（`Wi-SUN dongle type: ...`）と Settings タブで確認できます。
 
 ### Wi-SUN（Bルート）は同時に1台としか接続できない
 

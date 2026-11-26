@@ -1,5 +1,6 @@
 from nicegui import ui
 from src.config.settings import settings
+from src.core.wisun_dongle import DONGLE_CHOICES
 import os
 
 def render():
@@ -21,6 +22,13 @@ def render():
                                     placeholder='32 chars hex').classes('w-full')
                 pwd_input = ui.input('B-Route Password', value=settings.communication.b_route_password,
                                      placeholder='12 chars').classes('w-full')
+                dongle_select = ui.select(DONGLE_CHOICES, label='Dongle Type (auto = 自動判別)',
+                                          value=settings.communication.wi_sun_dongle
+                                          if settings.communication.wi_sun_dongle in DONGLE_CHOICES else 'auto'
+                                          ).classes('w-full')
+                from src.core.wisun import wisun_manager
+                ui.label().classes('text-xs text-gray-500 mt-1').bind_text_from(
+                    wisun_manager, 'status_text', backward=lambda t: f'検出したドングル: {t}')
 
             # 1.5 Wi-Fi Settings Card (New)
             with ui.card().classes('w-96 p-4'):
@@ -179,6 +187,7 @@ def render():
         def save_settings():
             settings.communication.b_route_id = id_input.value
             settings.communication.b_route_password = pwd_input.value
+            settings.communication.wi_sun_dongle = dongle_select.value or 'auto'
 
             # Save Wi-Fi Devices
             new_wifi_devs = []
