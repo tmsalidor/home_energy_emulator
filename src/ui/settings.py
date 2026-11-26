@@ -136,6 +136,8 @@ def render():
                                              step=10).classes('w-full')
                     wh_power_input = ui.number('Heating Power [W]', value=settings.echonet.water_heater_power_w,
                                                step=100).classes('w-full')
+                    wh_instant_chk = ui.checkbox('Report Instantaneous Power (0x84)',
+                                                 value=settings.echonet.water_heater_instant_power).classes('w-full')
 
                 # V2H
                 with ui.card().classes('w-full p-4'):
@@ -210,6 +212,7 @@ def render():
             settings.echonet.water_heater_id = wh_id_input.value
             settings.echonet.water_heater_tank_capacity = int(wh_cap_input.value or 0)
             settings.echonet.water_heater_power_w = float(wh_power_input.value or 0)
+            settings.echonet.water_heater_instant_power = bool(wh_instant_chk.value)
             settings.echonet.smart_meter_id = sm_id_input.value
             settings.echonet.v2h_id = v2h_id_input.value
             settings.echonet.v2h_battery_capacity_wh = float(v2h_cap_input.value or 0)
