@@ -43,6 +43,25 @@ class TestRohmDoc(unittest.TestCase):
         self.assertEqual((e.num, e.side, e.param), ("25", "0", None))
 
 
+class TestRealDevices(unittest.TestCase):
+    """2026-11-26 に Mac で実機 (RS-WSUHA-P / TESSERA) + Remo E から記録した行"""
+
+    def test_rs_wsuha_p(self):
+        self.assertIs(guess_profile("EVER 1.5.2", "EAPPVER rev15e")[0], BP35C0)
+        p = parse_erxudp("ERXUDP FE80:0000:0000:0000:1207:23FF:FEA8:0AC4 FE80:0000:0000:0000:021D:1291:0006:B753 "
+                         "0E1A 0E1A 100723FFFEA80AC4 1 0 000E 1081000405FF010288016201E700")
+        self.assertTrue(p.has_side)
+        self.assertTrue(p.is_hex_payload)
+
+    def test_tessera(self):
+        self.assertIs(guess_profile("EVER 1.2.8", None)[0], SKSTACK_A1)  # SKAPPVER は FAIL ER04
+        p = parse_erxudp("ERXUDP FE80:0000:0000:0000:1207:23FF:FEA8:0AC4 FE80:0000:0000:0000:1207:23FF:FEA0:7400 "
+                         "0E1A 0E1A 100723FFFEA80AC4 1 000E 1081000205FF010288016201E700")
+        self.assertFalse(p.has_side)
+        e = parse_event("EVENT 21 FE80:0000:0000:0000:1207:23FF:FEA8:0AC4 00", SKSTACK_A1)
+        self.assertEqual(e.param, "00")
+
+
 class TestParse(unittest.TestCase):
     def test_erxudp_without_side(self):
         p = parse_erxudp(ERXUDP_A1)

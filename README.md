@@ -35,7 +35,7 @@ ECHONET Liteプロパティに対応したHEMS (Home Energy Management System) �
 - **ハードウェア環境**:
     - Wi-SUN USBドングル - Bルート通信エミュレーション用。以下に対応し、種類は起動時に自動判別します。
         - SKSTACK IP (TESSERA RL7023、ローム BP35A1 等)
-        - RATOC RS-WSUHA-P (ローム BP35C0、DSE ファーム ver.1.5.2) ※実機確認中。ロームの資料で B ルートのコーディネータ (メーター側) として動作可能とされています (メーター側の Wi-SUN 認証は未取得)。RS-WSUHA-J11 は非対応
+        - RATOC RS-WSUHA-P (ローム BP35C0、DSE ファーム ver.1.5.2) - Nature Remo E でスマートメーターの登録・瞬時電力の表示を確認済み。メーター側の Wi-SUN 認証はロームでは未取得です。USB は FTDI (VID:PID 0403:6015) で、Linux では `/dev/ttyUSB0` として見えます。RS-WSUHA-J11 (BP35C0-J11) はバイナリ形式のコマンドで、B ルートではメーター側になれないため非対応
     - Raspberry Pi (3B+, 4B, 5 等) 推奨 - 常時稼働用サーバーとして適しています。
 - **ソフトウェア環境**:
     - **推奨**: Linux (Ubuntu, Raspberry Pi OS) - Docker (`network_mode: host`) がネイティブ動作するため、ECHONET Liteのマルチキャスト通信に最適です。
