@@ -35,7 +35,7 @@ ECHONET Liteプロパティに対応したHEMS (Home Energy Management System) �
 - **ハードウェア環境**:
     - Wi-SUN USBドングル - Bルート通信エミュレーション用。以下に対応し、種類は起動時に自動判別します。
         - SKSTACK IP (TESSERA RL7023、ローム BP35A1 等)
-        - RATOC RS-WSUHA-P (ローム BP35C0、DSE ファーム ver.1.5.2) - Nature Remo E でスマートメーターの登録・瞬時電力の表示を確認済み。メーター側の Wi-SUN 認証はロームでは未取得です。USB は FTDI (VID:PID 0403:6015) で、Linux では `/dev/ttyUSB0` として見えます。RS-WSUHA-J11 (BP35C0-J11) はバイナリ形式のコマンドで、B ルートではメーター側になれないため非対応
+        - RATOC RS-WSUHA-P (ローム BP35C0、DSE ファーム ver.1.5.2) RS-WSUHA-J11 (BP35C0-J11) はB ルートではメーター側になれないため非対応です
     - Raspberry Pi (3B+, 4B, 5 等) 推奨 - 常時稼働用サーバーとして適しています。
 - **ソフトウェア環境**:
     - **推奨**: Linux (Ubuntu, Raspberry Pi OS) - Docker (`network_mode: host`) がネイティブ動作するため、ECHONET Liteのマルチキャスト通信に最適です。
@@ -182,7 +182,7 @@ printf '[connection]\nwifi.powersave = 2\n' | sudo tee /etc/NetworkManager/conf.
 
 ### Wi-SUN（Bルート）は同時に1台としか接続できない
 
-Wi-SUNドングル（SKSTACK IP）はPANA認証サーバ（PAA）として動作し、**1台の機器とPANA接続が成立すると、他の機器からの新規の接続を受け付けません**（SKコマンドリファレンスマニュアル SKJOIN の項）。実際のスマートメーターとは挙動が異なります。
+Wi-SUNドングルはPANA認証サーバ（PAA）として動作し、**1台の機器とPANA接続が成立すると、他の機器からの新規の接続を受け付けません**（SKコマンドリファレンスマニュアル SKJOIN の項）。実際のスマートメーターとは挙動が異なります。
 
 - 別のHEMSコントローラー（Nature Remo E 等）でスマートメーターを新しく登録する場合は、**接続中の機器の電源を切って（または登録を解除して）**から、エミュレーターを再起動してください。起動時の `SKRESET` / `SKSTART` で既存のPANAセッションが消え、新しい機器が接続できるようになります。
     ```bash
