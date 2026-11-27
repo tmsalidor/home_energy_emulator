@@ -34,8 +34,8 @@ ECHONET Liteプロパティに対応したHEMS (Home Energy Management System) �
 ## 必要要件
 - **ハードウェア環境**:
     - Wi-SUN USBドングル - Bルート通信エミュレーション用。以下に対応し、種類は起動時に自動判別します。
-        - TESSERA RL7023 Stick-D/IPS (ローム BP35A1 SKSTACK ver.1.2.8)
-        - RATOC RS-WSUHA-P (ローム BP35C0 SKSTACK ver.1.5.2) （※注意：RS-WSUHA-J11 (BP35C0-J11) はB ルートではメーター側になれないため非対応です）
+        - TESSERA RL7023 Stick-D/IPS (ローム BP35A1 SKSTACK ver.1.2.X)
+        - RATOC RS-WSUHA-P (ローム BP35C0 SKSTACK ver.1.5.X) （※注意：RS-WSUHA-J11 (BP35C0-J11) はB ルートではメーター側になれないため非対応です）
     - Raspberry Pi (3B+, 4B, 5 等) 推奨 - 常時稼働用サーバーとして適しています。
 - **ソフトウェア環境**:
     - **推奨**: Linux (Ubuntu, Raspberry Pi OS) - Docker (`network_mode: host`) がネイティブ動作するため、ECHONET Liteのマルチキャスト通信に最適です。
